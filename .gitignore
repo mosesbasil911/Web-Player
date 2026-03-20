@@ -149,3 +149,5 @@ vite.config.ts.timestamp-*
 *.njsproj
 *.sln
 *.sw?
+
+PLAN.md
