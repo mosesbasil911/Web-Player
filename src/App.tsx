@@ -1,121 +1,110 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState, useMemo } from "react";
+import { VideoPlayer } from "@media-plyr/index.ts";
+import type { MediaPlyrConfig } from "@media-plyr/types/index.ts";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+interface DemoSource {
+  label: string;
+  config: MediaPlyrConfig;
 }
 
-export default App
+const DEMO_SOURCES: DemoSource[] = [
+  {
+    label: "Big Buck Bunny (MP4)",
+    config: {
+      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      type: "video/mp4",
+      title: "Big Buck Bunny",
+      poster:
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+      autoplay: false,
+    },
+  },
+  {
+    label: "Mux HLS Test Stream",
+    config: {
+      src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+      type: "application/x-mpegURL",
+      title: "Mux HLS Test Stream",
+      autoplay: false,
+      poster:
+        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+    },
+  },
+];
+
+const CUSTOM_VALUE = "__custom__";
+
+function inferType(url: string): MediaPlyrConfig["type"] {
+  if (/\.m3u8(\?|$)/i.test(url)) return "application/x-mpegURL";
+  if (/\.mpd(\?|$)/i.test(url)) return "application/dash+xml";
+  return "video/mp4";
+}
+
+function App() {
+  const [selected, setSelected] = useState("0");
+  const [customUrl, setCustomUrl] = useState("");
+
+  const activeConfig: MediaPlyrConfig | null = useMemo(() => {
+    if (selected !== CUSTOM_VALUE) {
+      return DEMO_SOURCES[Number(selected)].config;
+    }
+    const trimmed = customUrl.trim();
+    if (!trimmed) return null;
+    return {
+      src: trimmed,
+      type: inferType(trimmed),
+      title: "Custom Source",
+      autoplay: false,
+    };
+  }, [selected, customUrl]);
+
+  return (
+    <div className="demo-page">
+      <header className="demo-header">
+        <h1>mediaPlyr</h1>
+        <p>Week 1 — Core Shaka Integration Demo</p>
+      </header>
+
+      <main className="demo-content">
+        <div className="source-picker">
+          <label htmlFor="source-select">Source</label>
+          <select
+            id="source-select"
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+          >
+            {DEMO_SOURCES.map((s, i) => (
+              <option key={i} value={String(i)}>
+                {s.label}
+              </option>
+            ))}
+            <option value={CUSTOM_VALUE}>Custom URL…</option>
+          </select>
+
+          {selected === CUSTOM_VALUE && (
+            <input
+              className="custom-url-input"
+              type="url"
+              placeholder="Paste a video URL (.mp4, .m3u8, .mpd)"
+              value={customUrl}
+              onChange={(e) => setCustomUrl(e.target.value)}
+            />
+          )}
+        </div>
+
+        <section className="demo-section">
+          {activeConfig ? (
+            <VideoPlayer key={activeConfig.src} config={activeConfig} />
+          ) : (
+            <div className="empty-state">
+              Enter a URL above to start playback
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+export default App;

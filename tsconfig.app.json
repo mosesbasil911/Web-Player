@@ -22,7 +22,12 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@media-plyr/*": ["modules/media-plyr/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "modules"]
 }
