@@ -1,8 +1,23 @@
-export type MediaType =
+export type MediaKind = 'video' | 'audio';
+
+export type SourceContainer =
+  | 'hls'
+  | 'dash'
+  | 'mp4'
+  | 'webm'
+  | 'mp3'
+  | 'aac'
+  | 'ogg';
+
+export type MediaMimeType =
   | 'video/mp4'
   | 'video/webm'
   | 'audio/mp3'
   | 'audio/mpeg'
+  | 'audio/mp4'
+  | 'audio/aac'
+  | 'audio/ogg'
+  | 'application/vnd.apple.mpegurl'
   | 'application/x-mpegURL'
   | 'application/dash+xml';
 
@@ -13,8 +28,8 @@ export type PlaybackSpeed = 0.25 | 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
 export type AdBreakType = 'pre-roll' | 'mid-roll' | 'post-roll' | 'custom';
 
 export interface MediaTrack {
-  src: string;
-  type: MediaType;
+  kind: MediaKind;
+  sources: MediaSource[];
   title: string;
   artist?: string;
   album?: string;
@@ -82,11 +97,22 @@ export interface CrossfadeConfig {
   durationMs?: number;
 }
 
+export interface MediaSource {
+  container: SourceContainer;
+  mimeType: MediaMimeType;
+  url: string;
+  bitrate?: number;
+  size?: string;
+  resolution?: string;
+}
+
 export interface MediaPlyrConfig {
-  src: string;
-  type: MediaType;
+  kind: MediaKind;
+  sources: MediaSource[];
   title: string;
   poster?: string;
+  preferredOrder?: SourceContainer[];
+  crossOrigin?: 'anonymous' | 'use-credentials';
   autoplay?: boolean;
   muted?: boolean;
   loop?: boolean;
@@ -196,4 +222,41 @@ export interface MediaPlyrInstance {
   off(event: MediaPlyrEventType, callback: MediaPlyrEventCallback): void;
 
   readonly videoElement: HTMLVideoElement | HTMLAudioElement | null;
+}
+
+// ---------------------------------------------------------------------------
+// Raw media types — the pre-normalized shape before conversion to
+// `MediaSource[]`.  Use `mapRawMediaToSources()` to convert.
+// ---------------------------------------------------------------------------
+
+export interface RawHlsQuality {
+  bitrate: number;
+  size: string;
+  resolution: string;
+}
+
+export interface RawHlsMedia {
+  mimeType: string;
+  url: string;
+  qualities: RawHlsQuality[];
+}
+
+export interface RawProgressiveQuality {
+  bitrate: number;
+  size: string;
+  resolution: string;
+  url: string;
+}
+
+export interface RawProgressiveMedia {
+  mimeType: string;
+  qualities: RawProgressiveQuality[];
+}
+
+export interface RawMedia {
+  mediaId?: string;
+  poster?: string;
+  m3u8: RawHlsMedia;
+  mp4: RawProgressiveMedia;
+  webm: RawProgressiveMedia;
 }

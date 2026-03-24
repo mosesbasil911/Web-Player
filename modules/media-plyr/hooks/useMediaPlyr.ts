@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { MediaPlyr } from '../core/MediaPlyr.ts';
 import type { MediaPlyrConfig, PlaybackState, MediaPlyrInstance } from '../types/index.ts';
 
@@ -25,6 +25,12 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
   const [error, setError] = useState<{ code: number; message: string } | null>(null);
   const [ready, setReady] = useState(false);
   const [instance, setInstance] = useState<MediaPlyrInstance | null>(null);
+
+  const sourcesSignature = useMemo(() => {
+    return config.sources
+      .map((source) => `${source.container}:${source.mimeType}:${source.url}:${source.bitrate ?? ''}`)
+      .join('|');
+  }, [config.sources]);
 
   const ref = useCallback((el: HTMLVideoElement | HTMLAudioElement | null) => {
     setMediaElement(el);
@@ -62,9 +68,9 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
       setReady(false);
       setError(null);
     };
-    // Re-attach when src or type changes
+    // Re-attach when source selection context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaElement, config.src, config.type]);
+  }, [mediaElement, config.kind, sourcesSignature, config.startTime, config.preferredOrder]);
 
   const getInstance = useCallback((): MediaPlyrInstance | null => {
     return playerRef.current;
