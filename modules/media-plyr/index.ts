@@ -4,6 +4,14 @@ export { EventEmitter } from './core/EventEmitter.ts';
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
 
+export { ControlBar } from './components/controls/ControlBar.tsx';
+export { PlayPauseButton } from './components/controls/PlayPauseButton.tsx';
+export { SeekBar } from './components/controls/SeekBar.tsx';
+export { VolumeControl } from './components/controls/VolumeControl.tsx';
+export { MuteButton } from './components/controls/MuteButton.tsx';
+export { TimeDisplay } from './components/controls/TimeDisplay.tsx';
+export { FullscreenButton } from './components/controls/FullscreenButton.tsx';
+
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
 
 export { formatTime } from './utils/formatTime.ts';
