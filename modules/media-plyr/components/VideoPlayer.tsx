@@ -1,11 +1,22 @@
-import { useEffect } from 'react';
-import { useMediaPlyr } from '../hooks/useMediaPlyr.ts';
-import { formatTime } from '../utils/formatTime.ts';
-import type { VideoPlayerProps } from '../types/index.ts';
-import '../styles/media-plyr.css';
+import { useEffect, useMemo } from "react";
+import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
+import { orderSources } from "../utils/orderSources.ts";
+import { formatTime } from "../utils/formatTime.ts";
+import type { VideoPlayerProps } from "../types/index.ts";
+import "../styles/media-plyr.css";
 
-export function VideoPlayer({ config, className, onReady, onError }: VideoPlayerProps) {
+export function VideoPlayer({
+  config,
+  className,
+  onReady,
+  onError,
+}: VideoPlayerProps) {
   const { ref, state, error, ready, player } = useMediaPlyr(config);
+
+  const orderedSources = useMemo(
+    () => orderSources(config.sources, config.preferredOrder),
+    [config.sources, config.preferredOrder],
+  );
 
   useEffect(() => {
     if (ready && player && onReady) {
@@ -18,7 +29,7 @@ export function VideoPlayer({ config, className, onReady, onError }: VideoPlayer
       onError({
         code: error.code,
         message: error.message,
-        severity: 'fatal',
+        severity: "fatal",
       });
     }
   }, [error, onError]);
@@ -50,11 +61,11 @@ export function VideoPlayer({ config, className, onReady, onError }: VideoPlayer
 
   if (error && error.code !== 1001) {
     return (
-      <div className={`media-plyr media-plyr--error ${className ?? ''}`}>
+      <div className={`media-plyr media-plyr--error ${className ?? ""}`}>
         <div className="media-plyr__error-overlay">
           <div className="media-plyr__error-icon">&#9888;</div>
           <p className="media-plyr__error-message">
-            {error.message || 'Failed to load media'}
+            {error.message || "Failed to load media"}
           </p>
           <button
             className="media-plyr__error-retry"
@@ -68,15 +79,25 @@ export function VideoPlayer({ config, className, onReady, onError }: VideoPlayer
   }
 
   return (
-    <div className={`media-plyr media-plyr--video ${className ?? ''}`}>
+    <div className={`media-plyr media-plyr--video ${className ?? ""}`}>
       <div className="media-plyr__container">
         <video
           ref={ref}
           className="media-plyr__video"
           poster={config.poster}
+          muted={!!config.muted}
           playsInline
+          crossOrigin={config.crossOrigin}
           aria-label={config.title}
-        />
+        >
+          {orderedSources.map((source) => (
+            <source
+              key={`${source.container}-${source.url}`}
+              src={source.url}
+              type={source.mimeType}
+            />
+          ))}
+        </video>
 
         {!ready && (
           <div className="media-plyr__loading-overlay">
@@ -103,17 +124,17 @@ export function VideoPlayer({ config, className, onReady, onError }: VideoPlayer
               <button
                 className="media-plyr__btn"
                 onClick={handlePlayPause}
-                aria-label={state.playing ? 'Pause' : 'Play'}
+                aria-label={state.playing ? "Pause" : "Play"}
               >
-                {state.playing ? '⏸' : '▶'}
+                {state.playing ? "⏸" : "▶"}
               </button>
 
               <button
                 className="media-plyr__btn"
                 onClick={handleMuteToggle}
-                aria-label={state.muted ? 'Unmute' : 'Mute'}
+                aria-label={state.muted ? "Unmute" : "Mute"}
               >
-                {state.muted ? '🔇' : '🔊'}
+                {state.muted ? "🔇" : "🔊"}
               </button>
 
               <input
@@ -136,9 +157,9 @@ export function VideoPlayer({ config, className, onReady, onError }: VideoPlayer
               <button
                 className="media-plyr__btn"
                 onClick={handleFullscreen}
-                aria-label={state.fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                aria-label={state.fullscreen ? "Exit fullscreen" : "Fullscreen"}
               >
-                {state.fullscreen ? '⊠' : '⛶'}
+                {state.fullscreen ? "⊠" : "⛶"}
               </button>
             </div>
           </div>

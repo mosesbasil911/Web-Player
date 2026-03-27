@@ -2,13 +2,19 @@ export { MediaPlyr } from './core/MediaPlyr.ts';
 export { EventEmitter } from './core/EventEmitter.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
+export { AudioPlayer } from './components/AudioPlayer.tsx';
 
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
 
 export { formatTime } from './utils/formatTime.ts';
+export { orderSources, DEFAULT_SOURCE_ORDER } from './utils/orderSources.ts';
+export { mapRawMediaToSources } from './utils/mapRawMedia.ts';
 
 export type {
-  MediaType,
+  MediaKind,
+  SourceContainer,
+  MediaMimeType,
+  MediaSource,
   RepeatMode,
   PlaybackSpeed,
   AdBreakType,
@@ -31,4 +37,9 @@ export type {
   PlaybackState,
   QueueState,
   MediaPlyrInstance,
+  RawHlsQuality,
+  RawHlsMedia,
+  RawProgressiveQuality,
+  RawProgressiveMedia,
+  RawMedia,
 } from './types/index.ts';

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { VideoPlayer } from "@media-plyr/index.ts";
-import type { MediaPlyrConfig } from "@media-plyr/types/index.ts";
+import type { MediaPlyrConfig, MediaSource } from "@media-plyr/types/index.ts";
 import "./App.css";
 
 interface DemoSource {
@@ -12,8 +12,14 @@ const DEMO_SOURCES: DemoSource[] = [
   {
     label: "Big Buck Bunny (MP4)",
     config: {
-      src: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-      type: "video/mp4",
+      kind: "video",
+      sources: [
+        {
+          container: "mp4",
+          mimeType: "video/mp4",
+          url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+        },
+      ],
       title: "Big Buck Bunny",
       poster:
         "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
@@ -23,8 +29,14 @@ const DEMO_SOURCES: DemoSource[] = [
   {
     label: "Mux HLS Test Stream",
     config: {
-      src: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
-      type: "application/x-mpegURL",
+      kind: "video",
+      sources: [
+        {
+          container: "hls",
+          mimeType: "application/vnd.apple.mpegurl",
+          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+        },
+      ],
       title: "Mux HLS Test Stream",
       autoplay: false,
       poster:
@@ -35,10 +47,31 @@ const DEMO_SOURCES: DemoSource[] = [
 
 const CUSTOM_VALUE = "__custom__";
 
-function inferType(url: string): MediaPlyrConfig["type"] {
-  if (/\.m3u8(\?|$)/i.test(url)) return "application/x-mpegURL";
-  if (/\.mpd(\?|$)/i.test(url)) return "application/dash+xml";
-  return "video/mp4";
+function inferKind(url: string): MediaPlyrConfig["kind"] {
+  if (/\.(mp3|aac|ogg)(\?|$)/i.test(url)) return "audio";
+  return "video";
+}
+
+function inferSource(url: string): MediaSource {
+  if (/\.m3u8(\?|$)/i.test(url)) {
+    return { container: "hls", mimeType: "application/vnd.apple.mpegurl", url };
+  }
+  if (/\.mpd(\?|$)/i.test(url)) {
+    return { container: "dash", mimeType: "application/dash+xml", url };
+  }
+  if (/\.webm(\?|$)/i.test(url)) {
+    return { container: "webm", mimeType: "video/webm", url };
+  }
+  if (/\.mp3(\?|$)/i.test(url)) {
+    return { container: "mp3", mimeType: "audio/mpeg", url };
+  }
+  if (/\.aac(\?|$)/i.test(url)) {
+    return { container: "aac", mimeType: "audio/aac", url };
+  }
+  if (/\.ogg(\?|$)/i.test(url)) {
+    return { container: "ogg", mimeType: "audio/ogg", url };
+  }
+  return { container: "mp4", mimeType: "video/mp4", url };
 }
 
 function App() {
@@ -52,8 +85,8 @@ function App() {
     const trimmed = customUrl.trim();
     if (!trimmed) return null;
     return {
-      src: trimmed,
-      type: inferType(trimmed),
+      kind: inferKind(trimmed),
+      sources: [inferSource(trimmed)],
       title: "Custom Source",
       autoplay: false,
     };
@@ -86,7 +119,7 @@ function App() {
             <input
               className="custom-url-input"
               type="url"
-              placeholder="Paste a video URL (.mp4, .m3u8, .mpd)"
+              placeholder="Paste media URL (.mp4, .webm, .m3u8, .mpd, .mp3, .aac)"
               value={customUrl}
               onChange={(e) => setCustomUrl(e.target.value)}
             />
@@ -95,7 +128,10 @@ function App() {
 
         <section className="demo-section">
           {activeConfig ? (
-            <VideoPlayer key={activeConfig.src} config={activeConfig} />
+            <VideoPlayer
+              key={activeConfig.sources.map((source) => source.url).join("|")}
+              config={activeConfig}
+            />
           ) : (
             <div className="empty-state">
               Enter a URL above to start playback

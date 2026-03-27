@@ -1,7 +1,9 @@
 import shaka from 'shaka-player';
 import { EventEmitter } from './EventEmitter.ts';
+import { orderSources } from '../utils/orderSources.ts';
 import type {
   MediaPlyrConfig,
+  MediaSource,
   MediaPlyrEventType,
   MediaPlyrEventCallback,
   MediaPlyrInstance,
@@ -9,6 +11,8 @@ import type {
   PlaybackSpeed,
   MediaPlyrError,
 } from '../types/index.ts';
+
+shaka.polyfill.installAll();
 
 export class MediaPlyr implements MediaPlyrInstance {
   private config: MediaPlyrConfig;
@@ -26,23 +30,7 @@ export class MediaPlyr implements MediaPlyrInstance {
 
     this.element = element;
 
-    shaka.polyfill.installAll();
-    if (!shaka.Player.isBrowserSupported()) {
-      this.handleError({
-        code: 1000,
-        message: 'Browser not supported by Shaka Player',
-        severity: 'fatal',
-      });
-      return;
-    }
-
-    this.player = new shaka.Player();
-    await this.player.attach(element);
-
-    this.configureDrm();
-    this.configureAbr();
     this.bindMediaEvents();
-    this.bindShakaEvents();
 
     if (this.config.volume !== undefined) {
       element.volume = Math.max(0, Math.min(1, this.config.volume));
@@ -54,8 +42,22 @@ export class MediaPlyr implements MediaPlyrInstance {
       element.playbackRate = this.config.playbackRate;
     }
 
+    if (this.config.sources.length === 0) {
+      this.handleError({
+        code: 1002,
+        message: 'No sources provided',
+        severity: 'fatal',
+      });
+      return;
+    }
+
     try {
-      await this.player.load(this.config.src, this.config.startTime);
+      const streamingSource = this.findPreferredStreamingSource();
+      if (streamingSource) {
+        await this.loadWithShaka(element, streamingSource);
+      } else {
+        await this.loadWithNative(element);
+      }
       if (this.destroyed) return;
       this.emitter.emit('loaded');
 
@@ -228,6 +230,61 @@ export class MediaPlyr implements MediaPlyrInstance {
     });
   }
 
+  private findPreferredStreamingSource(): MediaSource | null {
+    if (!this.isShakaSupported()) return null;
+    const ordered = orderSources(this.config.sources, this.config.preferredOrder);
+    return ordered.find((s) => s.container === 'hls' || s.container === 'dash') ?? null;
+  }
+
+  private async loadWithShaka(
+    element: HTMLVideoElement | HTMLAudioElement,
+    source: MediaSource,
+  ): Promise<void> {
+    if (!this.isShakaSupported()) {
+      this.handleError({
+        code: 1000,
+        message: 'Browser not supported by Shaka Player',
+        severity: 'fatal',
+      });
+      return;
+    }
+
+    if (!this.player) {
+      this.player = new shaka.Player();
+      await this.player.attach(element);
+      this.configureDrm();
+      this.configureAbr();
+      this.bindShakaEvents();
+    }
+    await this.player.load(source.url, this.config.startTime);
+  }
+
+  private async loadWithNative(
+    element: HTMLVideoElement | HTMLAudioElement,
+  ): Promise<void> {
+    if (this.player) {
+      await this.player.destroy();
+      this.player = null;
+    }
+
+    element.load();
+
+    const startTime = this.config.startTime;
+    if (startTime !== undefined && startTime > 0) {
+      await new Promise<void>((resolve) => {
+        element.addEventListener('loadedmetadata', () => {
+          element.currentTime = startTime;
+          resolve();
+        }, { once: true });
+        element.addEventListener('error', () => resolve(), { once: true });
+      });
+    }
+  }
+
+  private isShakaSupported(): boolean {
+    return shaka.Player.isBrowserSupported();
+  }
+
   private configureAbr(): void {
     if (!this.player || !this.config.abr) return;
 
@@ -265,6 +322,19 @@ export class MediaPlyr implements MediaPlyrInstance {
     bind('seeking', 'seeking');
     bind('seeked', 'seeked');
     bind('waiting', 'buffering');
+
+    const errorHandler = () => {
+      const mediaError = this.element?.error;
+      if (mediaError) {
+        this.handleError({
+          code: mediaError.code,
+          message: mediaError.message || `Media error code ${mediaError.code}`,
+          severity: 'fatal',
+        });
+      }
+    };
+    this.mediaEventHandlers.set('error', errorHandler);
+    this.element!.addEventListener('error', errorHandler);
 
     const fullscreenHandler = () => this.emitter.emit('fullscreenchange', {
       fullscreen: !!document.fullscreenElement,
