@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
 import { orderSources } from "../utils/orderSources.ts";
-import { formatTime } from "../utils/formatTime.ts";
+import { ControlBar } from "./controls/ControlBar.tsx";
 import type { VideoPlayerProps } from "../types/index.ts";
 import "../styles/media-plyr.css";
 
@@ -33,31 +33,6 @@ export function VideoPlayer({
       });
     }
   }, [error, onError]);
-
-  const handlePlayPause = () => {
-    if (!player) return;
-    if (state.playing) {
-      player.pause();
-    } else {
-      player.play();
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    player?.seek(Number(e.target.value));
-  };
-
-  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    player?.setVolume(Number(e.target.value));
-  };
-
-  const handleMuteToggle = () => {
-    player?.setMuted(!state.muted);
-  };
-
-  const handleFullscreen = () => {
-    player?.toggleFullscreen();
-  };
 
   if (error && error.code !== 1001) {
     return (
@@ -105,65 +80,7 @@ export function VideoPlayer({
           </div>
         )}
 
-        <div className="media-plyr__controls">
-          <div className="media-plyr__controls-top">
-            <input
-              type="range"
-              className="media-plyr__seek-bar"
-              min={0}
-              max={state.duration || 0}
-              step={0.1}
-              value={state.currentTime}
-              onChange={handleSeek}
-              aria-label="Seek"
-            />
-          </div>
-
-          <div className="media-plyr__controls-bottom">
-            <div className="media-plyr__controls-left">
-              <button
-                className="media-plyr__btn"
-                onClick={handlePlayPause}
-                aria-label={state.playing ? "Pause" : "Play"}
-              >
-                {state.playing ? "⏸" : "▶"}
-              </button>
-
-              <button
-                className="media-plyr__btn"
-                onClick={handleMuteToggle}
-                aria-label={state.muted ? "Unmute" : "Mute"}
-              >
-                {state.muted ? "🔇" : "🔊"}
-              </button>
-
-              <input
-                type="range"
-                className="media-plyr__volume-bar"
-                min={0}
-                max={1}
-                step={0.01}
-                value={state.muted ? 0 : state.volume}
-                onChange={handleVolumeChange}
-                aria-label="Volume"
-              />
-
-              <span className="media-plyr__time">
-                {formatTime(state.currentTime)} / {formatTime(state.duration)}
-              </span>
-            </div>
-
-            <div className="media-plyr__controls-right">
-              <button
-                className="media-plyr__btn"
-                onClick={handleFullscreen}
-                aria-label={state.fullscreen ? "Exit fullscreen" : "Fullscreen"}
-              >
-                {state.fullscreen ? "⊠" : "⛶"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ControlBar player={player} state={state} />
       </div>
     </div>
   );
