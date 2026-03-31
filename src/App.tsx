@@ -10,19 +10,20 @@ interface DemoSource {
 
 const DEMO_SOURCES: DemoSource[] = [
   {
-    label: "Big Buck Bunny (MP4)",
+    label: "Popeye meets Sinbad (MP4)",
     config: {
       kind: "video",
       sources: [
         {
           container: "mp4",
           mimeType: "video/mp4",
-          url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+          // url: "https://files.inqscribe.com/samples/IS_Intro.mp4",
+          url: "https://tile.loc.gov/storage-services/service/mbrs/ntscrm/00068306/00068306.mp4",
         },
       ],
-      title: "Big Buck Bunny",
+      title: "Popeye the Sailor meets Sinbad the Sailor",
       poster:
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+        "https://tile.loc.gov/storage-services/service/mbrs/ntscrm/00068306/00068306.jpg",
       autoplay: false,
     },
   },
@@ -40,7 +41,7 @@ const DEMO_SOURCES: DemoSource[] = [
       title: "Mux HLS Test Stream",
       autoplay: false,
       poster:
-        "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg",
+        "https://peach.blender.org/wp-content/uploads/title_anouncement.thumbnail.jpg",
     },
   },
 ];
@@ -96,7 +97,10 @@ function App() {
     <div className="demo-page">
       <header className="demo-header">
         <h1>mediaPlyr</h1>
-        <p>Week 1 — Core Shaka Integration Demo</p>
+        <p>
+          Demo of mediaPlyr, a high-performance media
+          <br /> player built on top of Shaka-Player.
+        </p>
       </header>
 
       <main className="demo-content">

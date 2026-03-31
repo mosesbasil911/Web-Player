@@ -1,8 +1,10 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
 import { orderSources } from "../utils/orderSources.ts";
+import { PlaybackMemory } from "../core/PlaybackMemory.ts";
 import { ControlBar } from "./controls/ControlBar.tsx";
-import type { VideoPlayerProps } from "../types/index.ts";
+import type { VideoPlayerProps, RepeatMode } from "../types/index.ts";
 import "../styles/media-plyr.css";
 
 export function VideoPlayer({
@@ -10,8 +12,42 @@ export function VideoPlayer({
   className,
   onReady,
   onError,
+  onPrev,
+  onNext,
+  hasPrev,
+  hasNext,
 }: VideoPlayerProps) {
-  const { ref, state, error, ready, player } = useMediaPlyr(config);
+  const memoryConfig = config.playbackMemory;
+  const mediaId = config.sources[0]?.url ?? config.title;
+
+  const resolvedConfig = useMemo(() => {
+    if (!memoryConfig?.enabled) return config;
+
+    const memory = new PlaybackMemory(memoryConfig);
+    const saved = memory.getSavedPosition(mediaId);
+    if (
+      saved !== null &&
+      (config.startTime === undefined || config.startTime === 0)
+    ) {
+      return { ...config, startTime: saved };
+    }
+    return config;
+  }, [config, memoryConfig, mediaId]);
+
+  const { ref, state, error, ready, player } = useMediaPlyr(resolvedConfig);
+
+  useKeyboardShortcuts(player, state);
+
+  const [repeat, setRepeat] = useState<RepeatMode>("none");
+  const [shuffle, setShuffle] = useState(false);
+
+  useEffect(() => {
+    if (!memoryConfig?.enabled || !player?.videoElement) return;
+
+    const memory = new PlaybackMemory(memoryConfig);
+    memory.attach(player.videoElement as HTMLMediaElement, mediaId);
+    return () => memory.detach();
+  }, [player, memoryConfig, mediaId]);
 
   const orderedSources = useMemo(
     () => orderSources(config.sources, config.preferredOrder),
@@ -80,7 +116,18 @@ export function VideoPlayer({
           </div>
         )}
 
-        <ControlBar player={player} state={state} />
+        <ControlBar
+          player={player}
+          state={state}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          onPrev={onPrev}
+          onNext={onNext}
+          repeat={repeat}
+          shuffle={shuffle}
+          onRepeatChange={setRepeat}
+          onShuffleChange={setShuffle}
+        />
       </div>
     </div>
   );

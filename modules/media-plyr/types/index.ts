@@ -136,6 +136,10 @@ export interface VideoPlayerProps {
   className?: string;
   onReady?: (player: MediaPlyrInstance) => void;
   onError?: (error: MediaPlyrError) => void;
+  onPrev?: () => void;
+  onNext?: () => void;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 export interface AudioPlayerProps {

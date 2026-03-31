@@ -18,6 +18,16 @@
   position: relative;
 }
 
+.media-plyr:focus {
+  outline: none;
+}
+
+.media-plyr:focus-visible {
+  outline: 2px solid var(--plyr-accent);
+  outline-offset: 2px;
+  border-radius: var(--plyr-border-radius);
+}
+
 /* 16:9 Aspect Ratio Container */
 .media-plyr__container {
   position: relative;
@@ -232,6 +242,74 @@
   opacity: 0.5;
 }
 
+/* Disabled buttons */
+.media-plyr__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Active toggle state (repeat, shuffle) */
+.media-plyr__btn--active {
+  color: var(--plyr-accent);
+}
+
+.media-plyr__btn--active:hover {
+  color: var(--plyr-accent-hover);
+}
+
+/* ---- Speed Selector ---- */
+.media-plyr__speed {
+  position: relative;
+}
+
+.media-plyr__speed-label {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.media-plyr__speed-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: rgba(20, 20, 30, 0.95);
+  border-radius: 8px;
+  min-width: 100px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.media-plyr__speed-option {
+  display: block;
+  width: 100%;
+  padding: 6px 16px;
+  border: none;
+  background: none;
+  color: var(--plyr-text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background var(--plyr-transition),
+    color var(--plyr-transition);
+}
+
+.media-plyr__speed-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--plyr-text);
+}
+
+.media-plyr__speed-option--active {
+  color: var(--plyr-accent);
+  font-weight: 600;
+}
+
 /* Loading Overlay */
 .media-plyr__loading-overlay {
   position: absolute;
@@ -301,6 +379,17 @@
   background: var(--plyr-accent-hover);
 }
 
+/* Compact: hide secondary controls */
+.media-plyr__btn--prev,
+.media-plyr__btn--next,
+.media-plyr__btn--repeat,
+.media-plyr__btn--shuffle,
+.media-plyr__btn--pip,
+.media-plyr__speed,
+.media-plyr__volume-bar {
+  display: none;
+}
+
 /* Fullscreen */
 .media-plyr__container:fullscreen {
   border-radius: 0;
@@ -312,6 +401,16 @@
 
 .media-plyr__container:fullscreen .media-plyr__controls {
   opacity: 1;
+}
+
+.media-plyr__container:fullscreen .media-plyr__btn--prev,
+.media-plyr__container:fullscreen .media-plyr__btn--next,
+.media-plyr__container:fullscreen .media-plyr__btn--repeat,
+.media-plyr__container:fullscreen .media-plyr__btn--shuffle,
+.media-plyr__container:fullscreen .media-plyr__btn--pip,
+.media-plyr__container:fullscreen .media-plyr__speed,
+.media-plyr__container:fullscreen .media-plyr__volume-bar {
+  display: flex;
 }
 
 /* Mobile */
