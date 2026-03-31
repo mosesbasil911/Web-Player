@@ -267,18 +267,45 @@ export class MediaPlyr implements MediaPlyrInstance {
       this.player = null;
     }
 
-    element.load();
-
     const startTime = this.config.startTime;
-    if (startTime !== undefined && startTime > 0) {
-      await new Promise<void>((resolve) => {
-        element.addEventListener('loadedmetadata', () => {
+
+    await new Promise<void>((resolve, reject) => {
+      const sources = element.querySelectorAll('source');
+      let failedSources = 0;
+
+      const cleanup = () => {
+        element.removeEventListener('loadeddata', onSuccess);
+        element.removeEventListener('error', onError);
+        sources.forEach((s) => s.removeEventListener('error', onSourceError));
+      };
+
+      const onSuccess = () => {
+        cleanup();
+        if (startTime !== undefined && startTime > 0) {
           element.currentTime = startTime;
-          resolve();
-        }, { once: true });
-        element.addEventListener('error', () => resolve(), { once: true });
-      });
-    }
+        }
+        resolve();
+      };
+
+      const onError = () => {
+        cleanup();
+        reject(new Error(element.error?.message || 'Failed to load media'));
+      };
+
+      const onSourceError = () => {
+        failedSources++;
+        if (failedSources >= sources.length) {
+          cleanup();
+          reject(new Error('All media sources failed to load'));
+        }
+      };
+
+      element.addEventListener('loadeddata', onSuccess, { once: true });
+      element.addEventListener('error', onError, { once: true });
+      sources.forEach((s) => s.addEventListener('error', onSourceError, { once: true }));
+
+      element.load();
+    });
   }
 
   private isShakaSupported(): boolean {

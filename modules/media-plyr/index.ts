@@ -1,5 +1,6 @@
 export { MediaPlyr } from './core/MediaPlyr.ts';
 export { EventEmitter } from './core/EventEmitter.ts';
+export { PlaybackMemory } from './core/PlaybackMemory.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
@@ -11,8 +12,13 @@ export { VolumeControl } from './components/controls/VolumeControl.tsx';
 export { MuteButton } from './components/controls/MuteButton.tsx';
 export { TimeDisplay } from './components/controls/TimeDisplay.tsx';
 export { FullscreenButton } from './components/controls/FullscreenButton.tsx';
+export { SpeedSelector } from './components/controls/SpeedSelector.tsx';
+export { PrevNextButtons } from './components/controls/PrevNextButtons.tsx';
+export { RepeatShuffleButtons } from './components/controls/RepeatShuffleButtons.tsx';
+export { PipButton } from './components/controls/PipButton.tsx';
 
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
+export { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.ts';
 
 export { formatTime } from './utils/formatTime.ts';
 export { orderSources, DEFAULT_SOURCE_ORDER } from './utils/orderSources.ts';

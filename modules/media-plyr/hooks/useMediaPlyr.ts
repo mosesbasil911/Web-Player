@@ -39,10 +39,16 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
   useEffect(() => {
     if (!mediaElement) return;
 
+    setError(null);
+    setReady(false);
+
     const plyr = new MediaPlyr(config);
     playerRef.current = plyr;
 
-    plyr.on('loaded', () => setReady(true));
+    plyr.on('loaded', () => {
+      setState(plyr.getPlaybackState());
+      setReady(true);
+    });
     plyr.on('error', (data) => {
       const err = data as { code: number; message: string };
       setError(err);
@@ -65,8 +71,6 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
       plyr.destroy();
       playerRef.current = null;
       setInstance(null);
-      setReady(false);
-      setError(null);
     };
     // Re-attach when source selection context changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
