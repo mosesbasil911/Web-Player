@@ -25,8 +25,29 @@ const DEMO_SOURCES: DemoSource[] = [
       poster:
         "https://tile.loc.gov/storage-services/service/mbrs/ntscrm/00068306/00068306.jpg",
       autoplay: false,
+      playbackMemory: {
+        enabled: true,
+      },
     },
   },
+  {
+    label: "Redcliff 450 (WEBM)",
+    config: {
+      kind: "video",
+      sources: [
+        {
+          container: "webm",
+          mimeType: "video/webm",
+          url: "https://permadi.com/thirdParty/videos/redcliff450.webm",
+        },
+      ],
+      title: "Redcliff 450",
+      poster:
+        "https://m.media-amazon.com/images/M/MV5BMTcyOTQ3NDA1OV5BMl5BanBnXkFtZTcwMDY3NzM4Mg@@._V1_FMjpg_UX1000_.jpg",
+      autoplay: false,
+    },
+  },
+
   {
     label: "Mux HLS Test Stream",
     config: {

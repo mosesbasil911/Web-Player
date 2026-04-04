@@ -86,6 +86,18 @@ export interface AbrConfig {
   };
 }
 
+export interface StreamingConfig {
+  rebufferingGoal?: number;
+  bufferingGoal?: number;
+  bufferBehind?: number;
+  retryParameters?: {
+    maxAttempts?: number;
+    baseDelay?: number;
+    backoffFactor?: number;
+    timeout?: number;
+  };
+}
+
 export interface PlaybackMemoryConfig {
   enabled: boolean;
   intervalMs?: number;
@@ -125,6 +137,7 @@ export interface MediaPlyrConfig {
   ads?: AdsConfig;
   offline?: OfflineConfig;
   abr?: AbrConfig;
+  streaming?: StreamingConfig;
   playbackMemory?: PlaybackMemoryConfig;
   crossfade?: CrossfadeConfig;
 

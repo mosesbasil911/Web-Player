@@ -20,6 +20,7 @@ export class MediaPlyr implements MediaPlyrInstance {
   private emitter = new EventEmitter();
   private element: HTMLVideoElement | HTMLAudioElement | null = null;
   private destroyed = false;
+  private _waiting = false;
 
   constructor(config: MediaPlyrConfig) {
     this.config = config;
@@ -177,7 +178,7 @@ export class MediaPlyr implements MediaPlyrInstance {
       fullscreen: !!document.fullscreenElement,
       pip: document.pictureInPictureElement === el,
       seeking: el.seeking,
-      waiting: false,
+      waiting: this._waiting,
     };
   }
 
@@ -254,6 +255,7 @@ export class MediaPlyr implements MediaPlyrInstance {
       await this.player.attach(element);
       this.configureDrm();
       this.configureAbr();
+      this.configureStreaming();
       this.bindShakaEvents();
     }
     await this.player.load(source.url, this.config.startTime);
@@ -329,6 +331,22 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.player.configure('abr', abrConfig);
   }
 
+  private configureStreaming(): void {
+    if (!this.player) return;
+
+    const sc = this.config.streaming;
+    const streamingConfig: Record<string, unknown> = {};
+
+    if (sc?.rebufferingGoal !== undefined) streamingConfig.rebufferingGoal = sc.rebufferingGoal;
+    if (sc?.bufferingGoal !== undefined) streamingConfig.bufferingGoal = sc.bufferingGoal;
+    if (sc?.bufferBehind !== undefined) streamingConfig.bufferBehind = sc.bufferBehind;
+    if (sc?.retryParameters) streamingConfig.retryParameters = sc.retryParameters;
+
+    if (Object.keys(streamingConfig).length > 0) {
+      this.player.configure('streaming', streamingConfig);
+    }
+  }
+
   private mediaEventHandlers = new Map<string, EventListener>();
 
   private bindMediaEvents(): void {
@@ -348,7 +366,20 @@ export class MediaPlyr implements MediaPlyrInstance {
     bind('ratechange', 'ratechange');
     bind('seeking', 'seeking');
     bind('seeked', 'seeked');
-    bind('waiting', 'buffering');
+
+    const waitingHandler = () => {
+      this._waiting = true;
+      this.emitter.emit('buffering', this.getPlaybackState());
+    };
+    this.mediaEventHandlers.set('waiting', waitingHandler);
+    this.element!.addEventListener('waiting', waitingHandler);
+
+    const playingHandler = () => {
+      this._waiting = false;
+      this.emitter.emit('play', this.getPlaybackState());
+    };
+    this.mediaEventHandlers.set('playing', playingHandler);
+    this.element!.addEventListener('playing', playingHandler);
 
     const errorHandler = () => {
       const mediaError = this.element?.error;

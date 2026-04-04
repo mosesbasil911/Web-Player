@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
 import { orderSources } from "../utils/orderSources.ts";
+import { ErrorOverlay } from "./overlays/ErrorOverlay.tsx";
 import type { AudioPlayerProps } from "../types/index.ts";
 import "../styles/media-plyr.css";
 
@@ -32,6 +33,29 @@ export function AudioPlayer({
       });
     }
   }, [error, onError]);
+
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const hasFatalError = error && error.code !== 1001;
+
+  if (hasFatalError) {
+    return (
+      <div
+        className={`media-plyr media-plyr--audio media-plyr--error ${className ?? ""}`}
+      >
+        <ErrorOverlay
+          error={{
+            code: error.code,
+            message: error.message,
+            severity: "fatal",
+          }}
+          onRetry={handleRetry}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`media-plyr media-plyr--audio ${className ?? ""}`}>
