@@ -17,12 +17,16 @@ export { PrevNextButtons } from './components/controls/PrevNextButtons.tsx';
 export { RepeatShuffleButtons } from './components/controls/RepeatShuffleButtons.tsx';
 export { PipButton } from './components/controls/PipButton.tsx';
 
+export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
+export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
+
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
 export { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.ts';
 
 export { formatTime } from './utils/formatTime.ts';
 export { orderSources, DEFAULT_SOURCE_ORDER } from './utils/orderSources.ts';
 export { mapRawMediaToSources } from './utils/mapRawMedia.ts';
+export { detectSupport } from './utils/detectSupport.ts';
 
 export type {
   MediaKind,
@@ -40,6 +44,7 @@ export type {
   CastConfig,
   OfflineConfig,
   AbrConfig,
+  StreamingConfig,
   PlaybackMemoryConfig,
   CrossfadeConfig,
   MediaPlyrConfig,
@@ -57,3 +62,9 @@ export type {
   RawProgressiveMedia,
   RawMedia,
 } from './types/index.ts';
+
+export type {
+  BrowserSupport,
+  CodecSupport,
+  DetectedSupport,
+} from './utils/detectSupport.ts';

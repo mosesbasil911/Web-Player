@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
 import { orderSources } from "../utils/orderSources.ts";
 import { PlaybackMemory } from "../core/PlaybackMemory.ts";
 import { ControlBar } from "./controls/ControlBar.tsx";
+import { ErrorOverlay } from "./overlays/ErrorOverlay.tsx";
+import { BufferingOverlay } from "./overlays/BufferingOverlay.tsx";
 import type { VideoPlayerProps, RepeatMode } from "../types/index.ts";
 import "../styles/media-plyr.css";
 
@@ -70,21 +72,24 @@ export function VideoPlayer({
     }
   }, [error, onError]);
 
-  if (error && error.code !== 1001) {
+  const handleRetry = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const hasFatalError = error && error.code !== 1001;
+  const isBuffering = ready && state.waiting && !state.paused && !state.ended;
+
+  if (hasFatalError) {
     return (
       <div className={`media-plyr media-plyr--error ${className ?? ""}`}>
-        <div className="media-plyr__error-overlay">
-          <div className="media-plyr__error-icon">&#9888;</div>
-          <p className="media-plyr__error-message">
-            {error.message || "Failed to load media"}
-          </p>
-          <button
-            className="media-plyr__error-retry"
-            onClick={() => window.location.reload()}
-          >
-            Retry
-          </button>
-        </div>
+        <ErrorOverlay
+          error={{
+            code: error.code,
+            message: error.message,
+            severity: "fatal",
+          }}
+          onRetry={handleRetry}
+        />
       </div>
     );
   }
@@ -115,6 +120,8 @@ export function VideoPlayer({
             <div className="media-plyr__spinner" />
           </div>
         )}
+
+        <BufferingOverlay visible={isBuffering} />
 
         <ControlBar
           player={player}
