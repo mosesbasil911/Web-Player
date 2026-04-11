@@ -1,6 +1,7 @@
 export { MediaPlyr } from './core/MediaPlyr.ts';
 export { EventEmitter } from './core/EventEmitter.ts';
 export { PlaybackMemory } from './core/PlaybackMemory.ts';
+export { QueueManager } from './core/QueueManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
@@ -21,6 +22,7 @@ export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
 
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
+export { useQueue } from './hooks/useQueue.ts';
 export { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.ts';
 
 export { formatTime } from './utils/formatTime.ts';

@@ -1,6 +1,11 @@
 import { useState, useMemo } from "react";
 import { VideoPlayer } from "@media-plyr/index.ts";
-import type { MediaPlyrConfig, MediaSource } from "@media-plyr/types/index.ts";
+import { AudioPlayer } from "@media-plyr/components/AudioPlayer.tsx";
+import type {
+  MediaPlyrConfig,
+  MediaSource,
+  MediaTrack,
+} from "@media-plyr/types/index.ts";
 import "./App.css";
 
 interface DemoSource {
@@ -67,6 +72,68 @@ const DEMO_SOURCES: DemoSource[] = [
   },
 ];
 
+const AUDIO_PLAYLIST: MediaTrack[] = [
+  {
+    kind: "audio",
+    sources: [
+      {
+        container: "mp3",
+        mimeType: "audio/mpeg",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      },
+    ],
+    title: "SoundHelix Song 1",
+    artist: "T. Schürger",
+    duration: 375,
+  },
+  {
+    kind: "audio",
+    sources: [
+      {
+        container: "mp3",
+        mimeType: "audio/mpeg",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+      },
+    ],
+    title: "SoundHelix Song 2",
+    artist: "T. Schürger",
+    duration: 342,
+  },
+  {
+    kind: "audio",
+    sources: [
+      {
+        container: "mp3",
+        mimeType: "audio/mpeg",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+      },
+    ],
+    title: "SoundHelix Song 3",
+    artist: "T. Schürger",
+    duration: 295,
+  },
+  {
+    kind: "audio",
+    sources: [
+      {
+        container: "mp3",
+        mimeType: "audio/mpeg",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+      },
+    ],
+    title: "SoundHelix Song 6",
+    artist: "T. Schürger",
+    duration: 325,
+  },
+];
+
+const AUDIO_BASE_CONFIG: MediaPlyrConfig = {
+  kind: "audio",
+  sources: AUDIO_PLAYLIST[0].sources,
+  title: AUDIO_PLAYLIST[0].title,
+  autoplay: false,
+};
+
 const CUSTOM_VALUE = "__custom__";
 
 function inferKind(url: string): MediaPlyrConfig["kind"] {
@@ -96,7 +163,10 @@ function inferSource(url: string): MediaSource {
   return { container: "mp4", mimeType: "video/mp4", url };
 }
 
+type DemoMode = "video" | "audio";
+
 function App() {
+  const [mode, setMode] = useState<DemoMode>("video");
   const [selected, setSelected] = useState("0");
   const [customUrl, setCustomUrl] = useState("");
 
@@ -124,45 +194,104 @@ function App() {
         </p>
       </header>
 
-      <main className="demo-content">
-        <div className="source-picker">
-          <label htmlFor="source-select">Source</label>
-          <select
-            id="source-select"
-            value={selected}
-            onChange={(e) => setSelected(e.target.value)}
+      <nav className="demo-toggle" role="tablist" aria-label="Player mode">
+        <button
+          role="tab"
+          className={`demo-toggle__btn${mode === "video" ? " demo-toggle__btn--active" : ""}`}
+          aria-selected={mode === "video"}
+          onClick={() => setMode("video")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            {DEMO_SOURCES.map((s, i) => (
-              <option key={i} value={String(i)}>
-                {s.label}
-              </option>
-            ))}
-            <option value={CUSTOM_VALUE}>Custom URL…</option>
-          </select>
+            <rect x="2" y="3" width="20" height="14" rx="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+          Video
+        </button>
+        <button
+          role="tab"
+          className={`demo-toggle__btn${mode === "audio" ? " demo-toggle__btn--active" : ""}`}
+          aria-selected={mode === "audio"}
+          onClick={() => setMode("audio")}
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+          </svg>
+          Audio
+        </button>
+      </nav>
 
-          {selected === CUSTOM_VALUE && (
-            <input
-              className="custom-url-input"
-              type="url"
-              placeholder="Paste media URL (.mp4, .webm, .m3u8, .mpd, .mp3, .aac)"
-              value={customUrl}
-              onChange={(e) => setCustomUrl(e.target.value)}
-            />
-          )}
-        </div>
+      <main className="demo-content">
+        {mode === "video" && (
+          <>
+            <div className="source-picker">
+              <label htmlFor="source-select">Source</label>
+              <select
+                id="source-select"
+                value={selected}
+                onChange={(e) => setSelected(e.target.value)}
+              >
+                {DEMO_SOURCES.map((s, i) => (
+                  <option key={i} value={String(i)}>
+                    {s.label}
+                  </option>
+                ))}
+                <option value={CUSTOM_VALUE}>Custom URL…</option>
+              </select>
 
-        <section className="demo-section">
-          {activeConfig ? (
-            <VideoPlayer
-              key={activeConfig.sources.map((source) => source.url).join("|")}
-              config={activeConfig}
-            />
-          ) : (
-            <div className="empty-state">
-              Enter a URL above to start playback
+              {selected === CUSTOM_VALUE && (
+                <input
+                  className="custom-url-input"
+                  type="url"
+                  placeholder="Paste media URL (.mp4, .webm, .m3u8, .mpd, .mp3, .aac)"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                />
+              )}
             </div>
-          )}
-        </section>
+
+            <section className="demo-section">
+              {activeConfig ? (
+                <VideoPlayer
+                  key={activeConfig.sources
+                    .map((source) => source.url)
+                    .join("|")}
+                  config={activeConfig}
+                />
+              ) : (
+                <div className="empty-state">
+                  Enter a URL above to start playback
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {mode === "audio" && (
+          <section className="demo-section">
+            <AudioPlayer config={AUDIO_BASE_CONFIG} playlist={AUDIO_PLAYLIST} />
+          </section>
+        )}
       </main>
     </div>
   );

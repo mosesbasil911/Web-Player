@@ -19,6 +19,52 @@
   font-size: 16px;
 }
 
+/* Mode Toggle */
+.demo-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--surface, #1a1a1a);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 32px;
+}
+
+.demo-toggle__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted, #888);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.demo-toggle__btn:hover {
+  color: var(--text, #fff);
+}
+
+.demo-toggle__btn--active {
+  background: var(--accent, #aa3bff);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(170, 59, 255, 0.3);
+}
+
+.demo-toggle__btn--active:hover {
+  color: #fff;
+}
+
+.demo-toggle__btn svg {
+  flex-shrink: 0;
+}
+
 .demo-content {
   display: flex;
   flex-direction: column;
