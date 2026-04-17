@@ -52,17 +52,67 @@ export class MediaPlyr implements MediaPlyrInstance {
       return;
     }
 
+    if (!this.isShakaSupported()) {
+      this.handleError({
+        code: 1000,
+        message: 'This browser is not supported. Please use a modern version of Chrome, Edge, Firefox, or Safari.',
+        severity: 'fatal',
+      });
+      return;
+    }
+
+    const manifest = this.pickManifest();
+    if (!manifest) {
+      this.handleError({
+        code: 1003,
+        message: 'No HLS or DASH manifest provided. Progressive sources (mp4, webm, mp3) are not supported.',
+        severity: 'fatal',
+      });
+      return;
+    }
+
     try {
-      const streamingSource = this.findPreferredStreamingSource();
-      if (streamingSource) {
-        await this.loadWithShaka(element, streamingSource);
-      } else {
-        await this.loadWithNative(element);
-      }
+      await this.loadWithShaka(element, manifest);
       if (this.destroyed) return;
       this.emitter.emit('loaded');
 
       if (this.config.autoplay) {
+        await this.play();
+      }
+    } catch (err) {
+      if (this.destroyed) return;
+      this.handleShakaError(err);
+    }
+  }
+
+  /**
+   * Load a new manifest into the already-attached Shaka player without
+   * destroying or recreating it. Shaka gracefully aborts the current load
+   * and begins the new one. Call this for source/track changes.
+   */
+  async loadSource(config: MediaPlyrConfig): Promise<void> {
+    if (this.destroyed || !this.player) return;
+
+    this.config = config;
+    this._waiting = false;
+    this.emitter.emit('loading');
+
+    const manifest = this.pickManifest();
+    if (!manifest) {
+      this.handleError({
+        code: 1003,
+        message: 'No HLS or DASH manifest provided.',
+        severity: 'fatal',
+      });
+      return;
+    }
+
+    try {
+      await this.player.load(manifest.url, config.startTime);
+      if (this.destroyed) return;
+      this.emitter.emit('loaded');
+
+      if (config.autoplay) {
         await this.play();
       }
     } catch (err) {
@@ -231,25 +281,26 @@ export class MediaPlyr implements MediaPlyrInstance {
     });
   }
 
-  private findPreferredStreamingSource(): MediaSource | null {
-    if (!this.isShakaSupported()) return null;
-    const ordered = orderSources(this.config.sources, this.config.preferredOrder);
-    return ordered.find((s) => s.container === 'hls' || s.container === 'dash') ?? null;
+  /**
+   * Picks the best manifest to hand Shaka. Honours `preferredOrder` if
+   * provided, otherwise defaults to HLS-first — Shaka handles HLS via MSE on
+   * all modern browsers and falls back to native `video.src=` on iOS Safari,
+   * so no device-specific branching is needed.
+   */
+  private pickManifest(): MediaSource | null {
+    const sources = this.config.sources.filter(
+      (s) => s.container === 'hls' || s.container === 'dash',
+    );
+    if (sources.length === 0) return null;
+
+    const ordered = orderSources(sources, this.config.preferredOrder);
+    return ordered[0] ?? null;
   }
 
   private async loadWithShaka(
     element: HTMLVideoElement | HTMLAudioElement,
     source: MediaSource,
   ): Promise<void> {
-    if (!this.isShakaSupported()) {
-      this.handleError({
-        code: 1000,
-        message: 'Browser not supported by Shaka Player',
-        severity: 'fatal',
-      });
-      return;
-    }
-
     if (!this.player) {
       this.player = new shaka.Player();
       await this.player.attach(element);
@@ -259,55 +310,6 @@ export class MediaPlyr implements MediaPlyrInstance {
       this.bindShakaEvents();
     }
     await this.player.load(source.url, this.config.startTime);
-  }
-
-  private async loadWithNative(
-    element: HTMLVideoElement | HTMLAudioElement,
-  ): Promise<void> {
-    if (this.player) {
-      await this.player.destroy();
-      this.player = null;
-    }
-
-    const startTime = this.config.startTime;
-
-    await new Promise<void>((resolve, reject) => {
-      const sources = element.querySelectorAll('source');
-      let failedSources = 0;
-
-      const cleanup = () => {
-        element.removeEventListener('loadeddata', onSuccess);
-        element.removeEventListener('error', onError);
-        sources.forEach((s) => s.removeEventListener('error', onSourceError));
-      };
-
-      const onSuccess = () => {
-        cleanup();
-        if (startTime !== undefined && startTime > 0) {
-          element.currentTime = startTime;
-        }
-        resolve();
-      };
-
-      const onError = () => {
-        cleanup();
-        reject(new Error(element.error?.message || 'Failed to load media'));
-      };
-
-      const onSourceError = () => {
-        failedSources++;
-        if (failedSources >= sources.length) {
-          cleanup();
-          reject(new Error('All media sources failed to load'));
-        }
-      };
-
-      element.addEventListener('loadeddata', onSuccess, { once: true });
-      element.addEventListener('error', onError, { once: true });
-      sources.forEach((s) => s.addEventListener('error', onSourceError, { once: true }));
-
-      element.load();
-    });
   }
 
   private isShakaSupported(): boolean {
@@ -340,6 +342,7 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (sc?.rebufferingGoal !== undefined) streamingConfig.rebufferingGoal = sc.rebufferingGoal;
     if (sc?.bufferingGoal !== undefined) streamingConfig.bufferingGoal = sc.bufferingGoal;
     if (sc?.bufferBehind !== undefined) streamingConfig.bufferBehind = sc.bufferBehind;
+    if (sc?.lowLatencyMode !== undefined) streamingConfig.lowLatencyMode = sc.lowLatencyMode;
     if (sc?.retryParameters) streamingConfig.retryParameters = sc.retryParameters;
 
     if (Object.keys(streamingConfig).length > 0) {
