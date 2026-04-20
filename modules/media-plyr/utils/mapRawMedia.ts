@@ -2,43 +2,29 @@ import type {
   MediaSource,
   MediaMimeType,
   RawMedia,
-  RawHlsMedia,
-  RawProgressiveMedia,
+  RawManifest,
 } from '../types/index.ts';
 
-function mapHls(hls: RawHlsMedia | undefined): MediaSource[] {
-  if (!hls?.url) return [];
+function mapManifest(
+  manifest: RawManifest | undefined,
+  container: 'hls' | 'dash',
+  defaultMime: MediaMimeType,
+): MediaSource[] {
+  if (!manifest?.url) return [];
   return [{
-    container: 'hls',
-    mimeType: hls.mimeType as MediaMimeType,
-    url: hls.url,
+    container,
+    url: manifest.url,
+    mimeType: (manifest.mimeType as MediaMimeType) ?? defaultMime,
   }];
 }
 
-function mapProgressive(
-  media: RawProgressiveMedia | undefined,
-  container: 'mp4' | 'webm',
-): MediaSource[] {
-  if (!media?.qualities?.length) return [];
-  const mimeType = media.mimeType as MediaMimeType;
-  return media.qualities.map((q) => ({
-    container,
-    mimeType,
-    url: q.url,
-    bitrate: q.bitrate,
-    size: q.size,
-    resolution: q.resolution,
-  }));
-}
-
 /**
- * Convert a `RawMedia` object (per-format objects with quality variants)
- * into the flat `MediaSource[]` array the player expects.
+ * Convert a `RawMedia` object into the flat `MediaSource[]` array the
+ * player expects. Only HLS and DASH manifests are supported.
  */
 export function mapRawMediaToSources(media: RawMedia): MediaSource[] {
   return [
-    ...mapHls(media.m3u8),
-    ...mapProgressive(media.webm, 'webm'),
-    ...mapProgressive(media.mp4, 'mp4'),
+    ...mapManifest(media.m3u8, 'hls', 'application/vnd.apple.mpegurl'),
+    ...mapManifest(media.mpd, 'dash', 'application/dash+xml'),
   ];
 }

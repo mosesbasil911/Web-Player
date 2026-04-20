@@ -28,7 +28,7 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
 
   const sourcesSignature = useMemo(() => {
     return config.sources
-      .map((source) => `${source.container}:${source.mimeType}:${source.url}:${source.bitrate ?? ''}`)
+      .map((source) => `${source.container}:${source.url}`)
       .join('|');
   }, [config.sources]);
 
@@ -36,15 +36,23 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
     setMediaElement(el);
   }, []);
 
+  // Effect A: create the MediaPlyr instance once per element+kind.
+  // The Shaka player is attached here and kept alive for the element's lifetime.
   useEffect(() => {
     if (!mediaElement) return;
 
     setError(null);
     setReady(false);
+    setState(DEFAULT_STATE);
 
     const plyr = new MediaPlyr(config);
     playerRef.current = plyr;
 
+    plyr.on('loading', () => {
+      setReady(false);
+      setError(null);
+      setState(DEFAULT_STATE);
+    });
     plyr.on('loaded', () => {
       setState(plyr.getPlaybackState());
       setReady(true);
@@ -71,10 +79,32 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
       plyr.destroy();
       playerRef.current = null;
       setInstance(null);
+      setReady(false);
+      setState(DEFAULT_STATE);
     };
-    // Re-attach when source selection context changes.
+    // Only recreate the player when the element or media kind changes.
+    // Source changes are handled by Effect B via loadSource().
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaElement, config.kind, sourcesSignature, config.startTime, config.preferredOrder]);
+  }, [mediaElement, config.kind]);
+
+  // Effect B: when the source URL(s), startTime, or preferredOrder change,
+  // reload the manifest into the EXISTING Shaka player instead of destroying
+  // and recreating it. This avoids the race condition caused by
+  // shaka.Player.destroy() being async but not awaited.
+  const configRef = useRef(config);
+  configRef.current = config;
+
+  useEffect(() => {
+    const plyr = playerRef.current;
+    // Skip on initial mount — attach() in Effect A handles the first load.
+    // We detect "initial" by checking whether the player has already attached
+    // (videoElement is non-null after attach resolves).
+    if (!plyr || !plyr.videoElement) return;
+
+    setReady(false);
+    setError(null);
+    plyr.loadSource(configRef.current);
+  }, [sourcesSignature, config.startTime, config.preferredOrder]);
 
   const getInstance = useCallback((): MediaPlyrInstance | null => {
     return playerRef.current;

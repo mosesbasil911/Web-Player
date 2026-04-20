@@ -58,15 +58,11 @@ export type {
   PlaybackState,
   QueueState,
   MediaPlyrInstance,
-  RawHlsQuality,
-  RawHlsMedia,
-  RawProgressiveQuality,
-  RawProgressiveMedia,
+  RawManifest,
   RawMedia,
 } from './types/index.ts';
 
 export type {
   BrowserSupport,
-  CodecSupport,
   DetectedSupport,
 } from './utils/detectSupport.ts';

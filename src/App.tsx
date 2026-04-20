@@ -15,52 +15,12 @@ interface DemoSource {
 
 const DEMO_SOURCES: DemoSource[] = [
   {
-    label: "Popeye meets Sinbad (MP4)",
-    config: {
-      kind: "video",
-      sources: [
-        {
-          container: "mp4",
-          mimeType: "video/mp4",
-          // url: "https://files.inqscribe.com/samples/IS_Intro.mp4",
-          url: "https://tile.loc.gov/storage-services/service/mbrs/ntscrm/00068306/00068306.mp4",
-        },
-      ],
-      title: "Popeye the Sailor meets Sinbad the Sailor",
-      poster:
-        "https://tile.loc.gov/storage-services/service/mbrs/ntscrm/00068306/00068306.jpg",
-      autoplay: false,
-      playbackMemory: {
-        enabled: true,
-      },
-    },
-  },
-  {
-    label: "Redcliff 450 (WEBM)",
-    config: {
-      kind: "video",
-      sources: [
-        {
-          container: "webm",
-          mimeType: "video/webm",
-          url: "https://permadi.com/thirdParty/videos/redcliff450.webm",
-        },
-      ],
-      title: "Redcliff 450",
-      poster:
-        "https://m.media-amazon.com/images/M/MV5BMTcyOTQ3NDA1OV5BMl5BanBnXkFtZTcwMDY3NzM4Mg@@._V1_FMjpg_UX1000_.jpg",
-      autoplay: false,
-    },
-  },
-
-  {
     label: "Mux HLS Test Stream",
     config: {
       kind: "video",
       sources: [
         {
           container: "hls",
-          mimeType: "application/vnd.apple.mpegurl",
           url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
         },
       ],
@@ -68,6 +28,39 @@ const DEMO_SOURCES: DemoSource[] = [
       autoplay: false,
       poster:
         "https://peach.blender.org/wp-content/uploads/title_anouncement.thumbnail.jpg",
+      playbackMemory: { enabled: true },
+    },
+  },
+  {
+    label: "Big Buck Bunny (DASH)",
+    config: {
+      kind: "video",
+      sources: [
+        {
+          container: "dash",
+          url: "https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd",
+        },
+      ],
+      title: "Angel One (Shaka Demo, DASH)",
+      autoplay: false,
+    },
+  },
+  {
+    label: "Sintel (DASH + HLS)",
+    config: {
+      kind: "video",
+      sources: [
+        {
+          container: "hls",
+          url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
+        },
+        {
+          container: "dash",
+          url: "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
+        },
+      ],
+      title: "Sintel — HLS preferred on iOS, DASH elsewhere",
+      autoplay: false,
     },
   },
 ];
@@ -77,53 +70,23 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     kind: "audio",
     sources: [
       {
-        container: "mp3",
-        mimeType: "audio/mpeg",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        container: "hls",
+        url: "https://audio-edge-5bkfj.fra.h.radiomast.io/ref-128k-aaclc-stereo/hls.m3u8",
       },
     ],
-    title: "SoundHelix Song 1",
-    artist: "T. Schürger",
-    duration: 375,
+    title: "Radio Mast",
+    artist: "Radio Mast",
   },
   {
     kind: "audio",
     sources: [
       {
-        container: "mp3",
-        mimeType: "audio/mpeg",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        container: "hls",
+        url: "https://audio-edge-3mayu.fra.h.radiomast.io/ref-24k-heaacv1-mono/hls.m3u8",
       },
     ],
-    title: "SoundHelix Song 2",
-    artist: "T. Schürger",
-    duration: 342,
-  },
-  {
-    kind: "audio",
-    sources: [
-      {
-        container: "mp3",
-        mimeType: "audio/mpeg",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-      },
-    ],
-    title: "SoundHelix Song 3",
-    artist: "T. Schürger",
-    duration: 295,
-  },
-  {
-    kind: "audio",
-    sources: [
-      {
-        container: "mp3",
-        mimeType: "audio/mpeg",
-        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
-      },
-    ],
-    title: "SoundHelix Song 6",
-    artist: "T. Schürger",
-    duration: 325,
+    title: "Radio Mast 2",
+    artist: "Radio Mast 2",
   },
 ];
 
@@ -137,30 +100,17 @@ const AUDIO_BASE_CONFIG: MediaPlyrConfig = {
 const CUSTOM_VALUE = "__custom__";
 
 function inferKind(url: string): MediaPlyrConfig["kind"] {
-  if (/\.(mp3|aac|ogg)(\?|$)/i.test(url)) return "audio";
-  return "video";
+  return /\/audio/i.test(url) ? "audio" : "video";
 }
 
-function inferSource(url: string): MediaSource {
+function inferSource(url: string): MediaSource | null {
   if (/\.m3u8(\?|$)/i.test(url)) {
-    return { container: "hls", mimeType: "application/vnd.apple.mpegurl", url };
+    return { container: "hls", url };
   }
   if (/\.mpd(\?|$)/i.test(url)) {
-    return { container: "dash", mimeType: "application/dash+xml", url };
+    return { container: "dash", url };
   }
-  if (/\.webm(\?|$)/i.test(url)) {
-    return { container: "webm", mimeType: "video/webm", url };
-  }
-  if (/\.mp3(\?|$)/i.test(url)) {
-    return { container: "mp3", mimeType: "audio/mpeg", url };
-  }
-  if (/\.aac(\?|$)/i.test(url)) {
-    return { container: "aac", mimeType: "audio/aac", url };
-  }
-  if (/\.ogg(\?|$)/i.test(url)) {
-    return { container: "ogg", mimeType: "audio/ogg", url };
-  }
-  return { container: "mp4", mimeType: "video/mp4", url };
+  return null;
 }
 
 type DemoMode = "video" | "audio";
@@ -169,6 +119,7 @@ function App() {
   const [mode, setMode] = useState<DemoMode>("video");
   const [selected, setSelected] = useState("0");
   const [customUrl, setCustomUrl] = useState("");
+  const [customUrlError, setCustomUrlError] = useState<string | null>(null);
 
   const activeConfig: MediaPlyrConfig | null = useMemo(() => {
     if (selected !== CUSTOM_VALUE) {
@@ -176,21 +127,37 @@ function App() {
     }
     const trimmed = customUrl.trim();
     if (!trimmed) return null;
+    const source = inferSource(trimmed);
+    if (!source) return null;
     return {
       kind: inferKind(trimmed),
-      sources: [inferSource(trimmed)],
+      sources: [source],
       title: "Custom Source",
       autoplay: false,
     };
   }, [selected, customUrl]);
+
+  const handleCustomUrlChange = (value: string) => {
+    setCustomUrl(value);
+    const trimmed = value.trim();
+    if (!trimmed) {
+      setCustomUrlError(null);
+      return;
+    }
+    setCustomUrlError(
+      inferSource(trimmed)
+        ? null
+        : "URL must be an .m3u8 (HLS) or .mpd (DASH) manifest.",
+    );
+  };
 
   return (
     <div className="demo-page">
       <header className="demo-header">
         <h1>mediaPlyr</h1>
         <p>
-          Demo of mediaPlyr, a high-performance media
-          <br /> player built on top of Shaka-Player.
+          Demo of mediaPlyr, a high-performance streaming media player
+          <br /> built on Shaka. HLS and DASH manifests only.
         </p>
       </header>
 
@@ -260,13 +227,21 @@ function App() {
               </select>
 
               {selected === CUSTOM_VALUE && (
-                <input
-                  className="custom-url-input"
-                  type="url"
-                  placeholder="Paste media URL (.mp4, .webm, .m3u8, .mpd, .mp3, .aac)"
-                  value={customUrl}
-                  onChange={(e) => setCustomUrl(e.target.value)}
-                />
+                <>
+                  <input
+                    className="custom-url-input"
+                    type="url"
+                    placeholder="Paste an HLS (.m3u8) or DASH (.mpd) manifest URL"
+                    value={customUrl}
+                    onChange={(e) => handleCustomUrlChange(e.target.value)}
+                    aria-invalid={customUrlError ? "true" : "false"}
+                  />
+                  {customUrlError && (
+                    <p className="custom-url-error" role="alert">
+                      {customUrlError}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -280,7 +255,7 @@ function App() {
                 />
               ) : (
                 <div className="empty-state">
-                  Enter a URL above to start playback
+                  Enter an HLS or DASH manifest URL above to start playback
                 </div>
               )}
             </section>

@@ -1,8 +1,11 @@
 import type { MediaSource, SourceContainer } from '../types/index.ts';
 
-export const DEFAULT_SOURCE_ORDER: SourceContainer[] = [
-  'hls', 'dash', 'webm', 'mp4', 'mp3', 'aac', 'ogg',
-];
+/**
+ * Default manifest preference. HLS first — Shaka handles HLS via MSE on all
+ * modern browsers and falls back to native `video.src=` on iOS Safari, so
+ * HLS-first is safe everywhere without device-specific branching.
+ */
+export const DEFAULT_SOURCE_ORDER: SourceContainer[] = ['hls', 'dash'];
 
 export function orderSources(
   sources: MediaSource[],
@@ -14,7 +17,6 @@ export function orderSources(
   return [...sources].sort((a, b) => {
     const aRank = rank.get(a.container) ?? fallback;
     const bRank = rank.get(b.container) ?? fallback;
-    if (aRank !== bRank) return aRank - bRank;
-    return (b.bitrate ?? 0) - (a.bitrate ?? 0);
+    return aRank - bRank;
   });
 }

@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
-import { orderSources } from "../utils/orderSources.ts";
 import { PlaybackMemory } from "../core/PlaybackMemory.ts";
 import { ControlBar } from "./controls/ControlBar.tsx";
 import { ErrorOverlay } from "./overlays/ErrorOverlay.tsx";
@@ -50,11 +49,6 @@ export function VideoPlayer({
     memory.attach(player.videoElement as HTMLMediaElement, mediaId);
     return () => memory.detach();
   }, [player, memoryConfig, mediaId]);
-
-  const orderedSources = useMemo(
-    () => orderSources(config.sources, config.preferredOrder),
-    [config.sources, config.preferredOrder],
-  );
 
   useEffect(() => {
     if (ready && player && onReady) {
@@ -105,15 +99,7 @@ export function VideoPlayer({
           playsInline
           crossOrigin={config.crossOrigin}
           aria-label={config.title}
-        >
-          {orderedSources.map((source) => (
-            <source
-              key={`${source.container}-${source.url}`}
-              src={source.url}
-              type={source.mimeType}
-            />
-          ))}
-        </video>
+        />
 
         {!ready && (
           <div className="media-plyr__loading-overlay">

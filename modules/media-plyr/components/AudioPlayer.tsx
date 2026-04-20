@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
 import { useQueue } from "../hooks/useQueue.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
-import { orderSources } from "../utils/orderSources.ts";
 import { PlaybackMemory } from "../core/PlaybackMemory.ts";
 import { PlayPauseButton } from "./controls/PlayPauseButton.tsx";
 import { SeekBar } from "./controls/SeekBar.tsx";
@@ -150,7 +149,7 @@ export function AudioPlayer({
       player.off("ended", handleEnded);
       player.off("play", handlePlay);
     };
-  }, [player, queue, queueState.repeat]);
+  }, [player, queue, queueState.repeat, queueState.currentIndex]);
 
   useEffect(() => {
     if (ready && player && onReady) onReady(player);
@@ -161,11 +160,6 @@ export function AudioPlayer({
       onError({ code: error.code, message: error.message, severity: "fatal" });
     }
   }, [error, onError]);
-
-  const orderedSources = useMemo(
-    () => orderSources(activeConfig.sources, activeConfig.preferredOrder),
-    [activeConfig.sources, activeConfig.preferredOrder],
-  );
 
   const handleRetry = useCallback(() => window.location.reload(), []);
   const handlePrev = useCallback(() => {
@@ -221,15 +215,7 @@ export function AudioPlayer({
         aria-label={title}
         crossOrigin={activeConfig.crossOrigin}
         preload="metadata"
-      >
-        {orderedSources.map((source) => (
-          <source
-            key={`${source.container}-${source.url}`}
-            src={source.url}
-            type={source.mimeType}
-          />
-        ))}
-      </audio>
+      />
 
       <div className="media-plyr-audio">
         {/* Track Info Row */}

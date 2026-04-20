@@ -3,6 +3,7 @@ import shaka from "shaka-player";
 export interface BrowserSupport {
   shaka: boolean;
   mediaSource: boolean;
+  nativeHls: boolean;
   video: boolean;
   audio: boolean;
   pip: boolean;
@@ -10,18 +11,8 @@ export interface BrowserSupport {
   airplay: boolean;
 }
 
-export interface CodecSupport {
-  mp4: boolean;
-  webm: boolean;
-  hls: boolean;
-  mp3: boolean;
-  aac: boolean;
-  ogg: boolean;
-}
-
 export interface DetectedSupport {
   browser: BrowserSupport;
-  codecs: CodecSupport;
 }
 
 function canPlayType(element: HTMLMediaElement, type: string): boolean {
@@ -39,6 +30,7 @@ export function detectSupport(): DetectedSupport {
   const browser: BrowserSupport = {
     shaka: shaka.Player.isBrowserSupported(),
     mediaSource: hasMSE,
+    nativeHls: canPlayType(video, "application/vnd.apple.mpegurl"),
     video: !!video.canPlayType,
     audio: !!audio.canPlayType,
     pip:
@@ -49,18 +41,9 @@ export function detectSupport(): DetectedSupport {
       (!!document.fullscreenEnabled ||
         !!(document as unknown as Record<string, unknown>)
           .webkitFullscreenEnabled),
-    airplay: "WebKitPlaybackTargetAvailabilityEvent" in window,
+    airplay: typeof window !== "undefined" &&
+      "WebKitPlaybackTargetAvailabilityEvent" in window,
   };
 
-  const codecs: CodecSupport = {
-    mp4: canPlayType(video, 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"'),
-    webm: canPlayType(video, 'video/webm; codecs="vp8, vorbis"'),
-    hls:
-      hasMSE || canPlayType(video, "application/vnd.apple.mpegurl"),
-    mp3: canPlayType(audio, "audio/mpeg"),
-    aac: canPlayType(audio, "audio/aac"),
-    ogg: canPlayType(audio, 'audio/ogg; codecs="vorbis"'),
-  };
-
-  return { browser, codecs };
+  return { browser };
 }

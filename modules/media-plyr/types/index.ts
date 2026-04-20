@@ -1,22 +1,13 @@
 export type MediaKind = 'video' | 'audio';
 
-export type SourceContainer =
-  | 'hls'
-  | 'dash'
-  | 'mp4'
-  | 'webm'
-  | 'mp3'
-  | 'aac'
-  | 'ogg';
+/**
+ * Supported streaming manifest containers. The player is built on Shaka
+ * and exclusively handles adaptive streaming manifests — progressive
+ * single-file sources (mp4, webm, mp3, etc.) are not accepted.
+ */
+export type SourceContainer = 'hls' | 'dash';
 
 export type MediaMimeType =
-  | 'video/mp4'
-  | 'video/webm'
-  | 'audio/mp3'
-  | 'audio/mpeg'
-  | 'audio/mp4'
-  | 'audio/aac'
-  | 'audio/ogg'
   | 'application/vnd.apple.mpegurl'
   | 'application/x-mpegURL'
   | 'application/dash+xml';
@@ -90,6 +81,11 @@ export interface StreamingConfig {
   rebufferingGoal?: number;
   bufferingGoal?: number;
   bufferBehind?: number;
+  /**
+   * Enables Shaka's Low-Latency HLS / CMAF-LL mode. Use for live streams
+   * authored with LL-HLS or LL-DASH. Safe to leave unset for VOD.
+   */
+  lowLatencyMode?: boolean;
   retryParameters?: {
     maxAttempts?: number;
     baseDelay?: number;
@@ -109,13 +105,20 @@ export interface CrossfadeConfig {
   durationMs?: number;
 }
 
+/**
+ * A streaming manifest (HLS `.m3u8` or DASH `.mpd`). The manifest itself
+ * declares all renditions/qualities, so quality metadata (bitrate, size,
+ * resolution) lives inside the manifest — not here.
+ *
+ * Provide at most one HLS and one DASH entry per asset. If both are
+ * provided, HLS is preferred on iOS (for native Safari playback via
+ * Shaka's `src=` fallback) and DASH is preferred elsewhere.
+ */
 export interface MediaSource {
   container: SourceContainer;
-  mimeType: MediaMimeType;
   url: string;
-  bitrate?: number;
-  size?: string;
-  resolution?: string;
+  /** Optional — purely informational; never written to the DOM. */
+  mimeType?: MediaMimeType;
 }
 
 export interface MediaPlyrConfig {
@@ -123,6 +126,14 @@ export interface MediaPlyrConfig {
   sources: MediaSource[];
   title: string;
   poster?: string;
+  /**
+   * Override the manifest selection order. Defaults to `['hls', 'dash']`.
+   *
+   * **iOS Safari warning:** passing `['dash', 'hls']` on iOS Safari is
+   * unsupported. Shaka requires an HLS manifest to fall back to native
+   * `video.src=` playback when MSE is restricted — DASH-first will likely
+   * cause playback failure on that platform.
+   */
   preferredOrder?: SourceContainer[];
   crossOrigin?: 'anonymous' | 'use-credentials';
   autoplay?: boolean;
@@ -180,6 +191,7 @@ export type MediaPlyrEventType =
   | 'seeking'
   | 'seeked'
   | 'buffering'
+  | 'loading'
   | 'loaded'
   | 'error'
   | 'destroy'
@@ -231,6 +243,8 @@ export interface MediaPlyrInstance {
   setPlaybackRate(rate: PlaybackSpeed): void;
   toggleFullscreen(): Promise<void>;
   togglePip(): Promise<void>;
+  /** Load a new manifest into the existing Shaka player without recreating it. */
+  loadSource(config: MediaPlyrConfig): Promise<void>;
   destroy(): void;
 
   getPlaybackState(): PlaybackState;
@@ -242,38 +256,21 @@ export interface MediaPlyrInstance {
 }
 
 // ---------------------------------------------------------------------------
-// Raw media types — the pre-normalized shape before conversion to
-// `MediaSource[]`.  Use `mapRawMediaToSources()` to convert.
+// Raw media types — the pre-normalized shape produced by upstream services
+// (CMS, encoder). Use `mapRawMediaToSources()` to convert into the flat
+// `MediaSource[]` the player accepts.
 // ---------------------------------------------------------------------------
 
-export interface RawHlsQuality {
-  bitrate: number;
-  size: string;
-  resolution: string;
-}
-
-export interface RawHlsMedia {
-  mimeType: string;
+export interface RawManifest {
   url: string;
-  qualities: RawHlsQuality[];
-}
-
-export interface RawProgressiveQuality {
-  bitrate: number;
-  size: string;
-  resolution: string;
-  url: string;
-}
-
-export interface RawProgressiveMedia {
-  mimeType: string;
-  qualities: RawProgressiveQuality[];
+  mimeType?: string;
 }
 
 export interface RawMedia {
   mediaId?: string;
   poster?: string;
-  m3u8: RawHlsMedia;
-  mp4: RawProgressiveMedia;
-  webm: RawProgressiveMedia;
+  /** HLS manifest (.m3u8). Strongly recommended for iOS compatibility. */
+  m3u8?: RawManifest;
+  /** DASH manifest (.mpd). */
+  mpd?: RawManifest;
 }
