@@ -77,6 +77,8 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     ],
     title: 'Design aesthetics',
     artist: 'MusicWord',
+    artwork:
+      'https://t4.ftcdn.net/jpg/03/10/69/39/240_F_310693986_tGNIg4QkdTYC52Yb8yOAd3kzT8QivNUf.jpg',
   },
   {
     kind: 'audio',
@@ -102,7 +104,7 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     title: '24Hours in Birmingham',
     artist: 'Jason Watkins',
     poster:
-      'https://t4.ftcdn.net/jpg/03/22/01/93/360_F_322019328_tpDuVYkRn16v58rWHjCjvS10yBoGuBIe.jpg',
+      'https://t3.ftcdn.net/jpg/04/73/82/74/240_F_473827438_sQmZTzoB4BQn55PRjaQOomEX8KMc54Pd.jpg',
   },
   {
     kind: 'audio',
@@ -114,6 +116,8 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     ],
     title: 'Driving 400 Miles to visit my Girlfriend',
     artist: 'Rush',
+    artwork:
+      'https://t3.ftcdn.net/jpg/02/15/61/70/240_F_215617098_sL5O83EOk37hP9oyg3r6KIyks56XHFvz.jpg',
   },
   {
     kind: 'audio',
@@ -125,6 +129,8 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     ],
     title: 'The Rains of Castamere',
     artist: 'Ramin Djawadi',
+    poster:
+      'https://t3.ftcdn.net/jpg/03/22/00/50/240_F_322005085_9A9wPbYGOIPXoCj6arG4t7O2JZ3V9Io8.jpg',
   },
 ];
 
