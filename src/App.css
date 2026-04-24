@@ -19,6 +19,40 @@
   font-size: 16px;
 }
 
+.demo-global-mute {
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: 1px solid var(--border, #333);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+.demo-global-mute:hover {
+  border-color: var(--accent, #aa3bff);
+}
+
+.demo-global-mute[aria-pressed='true'] {
+  background: var(--accent, #aa3bff);
+  border-color: var(--accent, #aa3bff);
+  color: #fff;
+}
+
+.source-picker__hint {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  line-height: 1.4;
+}
+
 /* Mode Toggle */
 .demo-toggle {
   display: flex;
@@ -123,7 +157,7 @@
   color: var(--text-muted, #666);
 }
 
-.custom-url-input[aria-invalid="true"] {
+.custom-url-input[aria-invalid='true'] {
   border-color: #ef4444;
 }
 

@@ -10,6 +10,8 @@ import type {
   PlaybackState,
   PlaybackSpeed,
   MediaPlyrError,
+  MediaMetadataEvent,
+  MediaMetadataFrame,
 } from '../types/index.ts';
 
 shaka.polyfill.installAll();
@@ -441,6 +443,87 @@ export class MediaPlyr implements MediaPlyrInstance {
         detail,
       });
     });
+
+    this.player.addEventListener('metadata', (event: Event) => {
+      const payload = this.normalizeShakaMetadata(event);
+      if (payload) this.emitter.emit('metadata', payload);
+    });
+  }
+
+  /**
+   * Shaka emits a `metadata` event whose `detail` is a `Map`-like structure
+   * with `startTime`, `endTime`, `metadataType`, and `payload` (an
+   * `ID3Metadata` or similar). We collapse that into a flat
+   * `MediaMetadataEvent` for downstream consumers.
+   */
+  private normalizeShakaMetadata(event: Event): MediaMetadataEvent | null {
+    const evt = event as unknown as {
+      startTime?: number;
+      endTime?: number | null;
+      metadataType?: string;
+      payload?: { frames?: unknown[] } | unknown;
+    };
+
+    const detail =
+      typeof (event as unknown as { detail?: unknown }).detail === 'object'
+        ? ((event as unknown as { detail: Record<string, unknown> }).detail)
+        : null;
+
+    const get = <T>(key: string, fallback: T): T => {
+      if (detail && key in detail) return detail[key] as T;
+      const direct = (evt as unknown as Record<string, unknown>)[key];
+      return (direct ?? fallback) as T;
+    };
+
+    // Shaka stores fields in a `Map` on the event detail in some builds.
+    let mapDetail: Map<string, unknown> | null = null;
+    if (detail instanceof Map) {
+      mapDetail = detail as Map<string, unknown>;
+    }
+    const fromMap = <T>(key: string, fallback: T): T =>
+      mapDetail && mapDetail.has(key) ? (mapDetail.get(key) as T) : fallback;
+
+    const startTime = mapDetail
+      ? fromMap('startTime', 0)
+      : get('startTime', 0);
+    const endTime = mapDetail
+      ? fromMap<number | null>('endTime', null)
+      : get<number | null>('endTime', null);
+    const metadataType = mapDetail
+      ? fromMap('metadataType', 'unknown')
+      : get('metadataType', 'unknown');
+    const rawPayload = mapDetail
+      ? fromMap<unknown>('payload', null)
+      : get<unknown>('payload', null);
+
+    const frames: MediaMetadataFrame[] = [];
+    const collect = (frame: unknown) => {
+      if (!frame || typeof frame !== 'object') return;
+      const f = frame as Record<string, unknown>;
+      frames.push({
+        key: String(f.key ?? ''),
+        description: String(f.description ?? ''),
+        data: (f.data as MediaMetadataFrame['data']) ?? null,
+        mimeType: (f.mimeType as string | null) ?? null,
+        pictureType: (f.pictureType as number | null) ?? null,
+      });
+    };
+
+    if (rawPayload && typeof rawPayload === 'object') {
+      const payloadFrames = (rawPayload as { frames?: unknown[] }).frames;
+      if (Array.isArray(payloadFrames)) {
+        payloadFrames.forEach(collect);
+      } else {
+        collect(rawPayload);
+      }
+    }
+
+    return {
+      startTime: typeof startTime === 'number' ? startTime : 0,
+      endTime: typeof endTime === 'number' ? endTime : null,
+      metadataType: String(metadataType),
+      frames,
+    };
   }
 
   private handleShakaError(err: unknown): void {
