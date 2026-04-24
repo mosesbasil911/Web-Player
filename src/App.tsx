@@ -1,12 +1,13 @@
-import { useState, useMemo } from "react";
-import { VideoPlayer } from "@media-plyr/index.ts";
-import { AudioPlayer } from "@media-plyr/components/AudioPlayer.tsx";
+import { useState, useMemo } from 'react';
+import { VideoPlayer } from '@media-plyr/index.ts';
+import { AudioPlayer } from '@media-plyr/components/AudioPlayer.tsx';
+import { useGlobalMute } from '@media-plyr/hooks/useGlobalMute.ts';
 import type {
   MediaPlyrConfig,
   MediaSource,
   MediaTrack,
-} from "@media-plyr/types/index.ts";
-import "./App.css";
+} from '@media-plyr/types/index.ts';
+import './App.css';
 
 interface DemoSource {
   label: string;
@@ -15,51 +16,51 @@ interface DemoSource {
 
 const DEMO_SOURCES: DemoSource[] = [
   {
-    label: "Mux HLS Test Stream",
+    label: 'Mux HLS Test Stream',
     config: {
-      kind: "video",
+      kind: 'video',
       sources: [
         {
-          container: "hls",
-          url: "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8",
+          container: 'hls',
+          url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
         },
       ],
-      title: "Mux HLS Test Stream",
+      title: 'Mux HLS Test Stream',
       autoplay: false,
       poster:
-        "https://peach.blender.org/wp-content/uploads/title_anouncement.thumbnail.jpg",
+        'https://peach.blender.org/wp-content/uploads/title_anouncement.thumbnail.jpg',
       playbackMemory: { enabled: true },
     },
   },
   {
-    label: "Big Buck Bunny (DASH)",
+    label: 'Big Buck Bunny (DASH)',
     config: {
-      kind: "video",
+      kind: 'video',
       sources: [
         {
-          container: "dash",
-          url: "https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd",
+          container: 'dash',
+          url: 'https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd',
         },
       ],
-      title: "Angel One (Shaka Demo, DASH)",
+      title: 'Angel One (Shaka Demo, DASH)',
       autoplay: false,
     },
   },
   {
-    label: "Sintel (DASH + HLS)",
+    label: 'Sintel (DASH + HLS)',
     config: {
-      kind: "video",
+      kind: 'video',
       sources: [
         {
-          container: "hls",
-          url: "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8",
+          container: 'hls',
+          url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
         },
         {
-          container: "dash",
-          url: "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
+          container: 'dash',
+          url: 'https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd',
         },
       ],
-      title: "Sintel — HLS preferred on iOS, DASH elsewhere",
+      title: 'Sintel — HLS preferred on iOS, DASH elsewhere',
       autoplay: false,
     },
   },
@@ -67,59 +68,116 @@ const DEMO_SOURCES: DemoSource[] = [
 
 const AUDIO_PLAYLIST: MediaTrack[] = [
   {
-    kind: "audio",
+    kind: 'audio',
     sources: [
       {
-        container: "hls",
-        url: "https://audio-edge-5bkfj.fra.h.radiomast.io/ref-128k-aaclc-stereo/hls.m3u8",
+        container: 'hls',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_59f661d849_r8kqv6.m3u8',
       },
     ],
-    title: "Radio Mast",
-    artist: "Radio Mast",
+    title: 'Design aesthetics',
+    artist: 'MusicWord',
   },
   {
-    kind: "audio",
+    kind: 'audio',
     sources: [
       {
-        container: "hls",
-        url: "https://audio-edge-3mayu.fra.h.radiomast.io/ref-24k-heaacv1-mono/hls.m3u8",
+        container: 'hls',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_4606c2ac46_wrulq4.m3u8',
       },
     ],
-    title: "Radio Mast 2",
-    artist: "Radio Mast 2",
+    title: 'Toxins Machine For The Engine',
+    artist: 'agerabeatz',
+    artwork:
+      'https://t4.ftcdn.net/jpg/03/22/01/93/360_F_322019328_tpDuVYkRn16v58rWHjCjvS10yBoGuBIe.jpg',
+  },
+  {
+    kind: 'audio',
+    sources: [
+      {
+        container: 'hls',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_b069c2dbf5_gfiytn.m3u8',
+      },
+    ],
+    title: '24Hours in Birmingham',
+    artist: 'Jason Watkins',
+    poster:
+      'https://t4.ftcdn.net/jpg/03/22/01/93/360_F_322019328_tpDuVYkRn16v58rWHjCjvS10yBoGuBIe.jpg',
+  },
+  {
+    kind: 'audio',
+    sources: [
+      {
+        container: 'hls',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_bf213674de_xso1go.m3u8',
+      },
+    ],
+    title: 'Driving 400 Miles to visit my Girlfriend',
+    artist: 'Rush',
+  },
+  {
+    kind: 'audio',
+    sources: [
+      {
+        container: 'hls',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_2dc7acd418_vsbkw9.m3u8',
+      },
+    ],
+    title: 'The Rains of Castamere',
+    artist: 'Ramin Djawadi',
   },
 ];
 
 const AUDIO_BASE_CONFIG: MediaPlyrConfig = {
-  kind: "audio",
+  kind: 'audio',
   sources: AUDIO_PLAYLIST[0].sources,
   title: AUDIO_PLAYLIST[0].title,
   autoplay: false,
 };
 
-const CUSTOM_VALUE = "__custom__";
+const CROSSFADE_DURATION_OPTIONS = [
+  { label: 'Off', value: 0 },
+  { label: '2s', value: 2000 },
+  { label: '4s', value: 4000 },
+  { label: '8s', value: 8000 },
+];
 
-function inferKind(url: string): MediaPlyrConfig["kind"] {
-  return /\/audio/i.test(url) ? "audio" : "video";
+const CUSTOM_VALUE = '__custom__';
+
+function inferKind(url: string): MediaPlyrConfig['kind'] {
+  return /\/audio/i.test(url) ? 'audio' : 'video';
 }
 
 function inferSource(url: string): MediaSource | null {
   if (/\.m3u8(\?|$)/i.test(url)) {
-    return { container: "hls", url };
+    return { container: 'hls', url };
   }
   if (/\.mpd(\?|$)/i.test(url)) {
-    return { container: "dash", url };
+    return { container: 'dash', url };
   }
   return null;
 }
 
-type DemoMode = "video" | "audio";
+type DemoMode = 'video' | 'audio';
 
 function App() {
-  const [mode, setMode] = useState<DemoMode>("video");
-  const [selected, setSelected] = useState("0");
-  const [customUrl, setCustomUrl] = useState("");
+  const [mode, setMode] = useState<DemoMode>('video');
+  const [selected, setSelected] = useState('0');
+  const [customUrl, setCustomUrl] = useState('');
   const [customUrlError, setCustomUrlError] = useState<string | null>(null);
+  const [crossfadeMs, setCrossfadeMs] = useState<number>(4000);
+  const { muted: globalMuted, toggle: toggleGlobalMute } = useGlobalMute();
+
+  const audioConfig = useMemo<MediaPlyrConfig>(
+    () => ({
+      ...AUDIO_BASE_CONFIG,
+      crossfade:
+        crossfadeMs > 0
+          ? { enabled: true, durationMs: crossfadeMs }
+          : { enabled: false },
+    }),
+    [crossfadeMs],
+  );
 
   const activeConfig: MediaPlyrConfig | null = useMemo(() => {
     if (selected !== CUSTOM_VALUE) {
@@ -132,7 +190,7 @@ function App() {
     return {
       kind: inferKind(trimmed),
       sources: [source],
-      title: "Custom Source",
+      title: 'Custom Source',
       autoplay: false,
     };
   }, [selected, customUrl]);
@@ -147,7 +205,7 @@ function App() {
     setCustomUrlError(
       inferSource(trimmed)
         ? null
-        : "URL must be an .m3u8 (HLS) or .mpd (DASH) manifest.",
+        : 'URL must be an .m3u8 (HLS) or .mpd (DASH) manifest.',
     );
   };
 
@@ -159,14 +217,22 @@ function App() {
           Demo of mediaPlyr, a high-performance streaming media player
           <br /> built on Shaka. HLS and DASH manifests only.
         </p>
+        <button
+          type="button"
+          className="demo-global-mute"
+          onClick={toggleGlobalMute}
+          aria-pressed={globalMuted}
+        >
+          Global mute: {globalMuted ? 'ON' : 'OFF'}
+        </button>
       </header>
 
       <nav className="demo-toggle" role="tablist" aria-label="Player mode">
         <button
           role="tab"
-          className={`demo-toggle__btn${mode === "video" ? " demo-toggle__btn--active" : ""}`}
-          aria-selected={mode === "video"}
-          onClick={() => setMode("video")}
+          className={`demo-toggle__btn${mode === 'video' ? ' demo-toggle__btn--active' : ''}`}
+          aria-selected={mode === 'video'}
+          onClick={() => setMode('video')}
         >
           <svg
             width="18"
@@ -186,9 +252,9 @@ function App() {
         </button>
         <button
           role="tab"
-          className={`demo-toggle__btn${mode === "audio" ? " demo-toggle__btn--active" : ""}`}
-          aria-selected={mode === "audio"}
-          onClick={() => setMode("audio")}
+          className={`demo-toggle__btn${mode === 'audio' ? ' demo-toggle__btn--active' : ''}`}
+          aria-selected={mode === 'audio'}
+          onClick={() => setMode('audio')}
         >
           <svg
             width="18"
@@ -209,7 +275,7 @@ function App() {
       </nav>
 
       <main className="demo-content">
-        {mode === "video" && (
+        {mode === 'video' && (
           <>
             <div className="source-picker">
               <label htmlFor="source-select">Source</label>
@@ -234,7 +300,7 @@ function App() {
                     placeholder="Paste an HLS (.m3u8) or DASH (.mpd) manifest URL"
                     value={customUrl}
                     onChange={(e) => handleCustomUrlChange(e.target.value)}
-                    aria-invalid={customUrlError ? "true" : "false"}
+                    aria-invalid={customUrlError ? 'true' : 'false'}
                   />
                   {customUrlError && (
                     <p className="custom-url-error" role="alert">
@@ -250,7 +316,7 @@ function App() {
                 <VideoPlayer
                   key={activeConfig.sources
                     .map((source) => source.url)
-                    .join("|")}
+                    .join('|')}
                   config={activeConfig}
                 />
               ) : (
@@ -262,10 +328,32 @@ function App() {
           </>
         )}
 
-        {mode === "audio" && (
-          <section className="demo-section">
-            <AudioPlayer config={AUDIO_BASE_CONFIG} playlist={AUDIO_PLAYLIST} />
-          </section>
+        {mode === 'audio' && (
+          <>
+            <div className="source-picker">
+              <label htmlFor="crossfade-select">Crossfade</label>
+              <select
+                id="crossfade-select"
+                value={String(crossfadeMs)}
+                onChange={(e) => setCrossfadeMs(Number(e.target.value))}
+              >
+                {CROSSFADE_DURATION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={String(opt.value)}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <span className="source-picker__hint">
+                Pre-buffers the next track and ramps volumes during the
+                transition. Requires VOD audio (radio streams have no fixed
+                duration so the trigger never fires).
+              </span>
+            </div>
+
+            <section className="demo-section">
+              <AudioPlayer config={audioConfig} playlist={AUDIO_PLAYLIST} />
+            </section>
+          </>
         )}
       </main>
     </div>

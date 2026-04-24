@@ -2,6 +2,17 @@ export { MediaPlyr } from './core/MediaPlyr.ts';
 export { EventEmitter } from './core/EventEmitter.ts';
 export { PlaybackMemory } from './core/PlaybackMemory.ts';
 export { QueueManager } from './core/QueueManager.ts';
+export { CrossfadeEngine } from './core/CrossfadeEngine.ts';
+export {
+  GlobalMuteManager,
+  getDefaultGlobalMuteManager,
+} from './core/GlobalMuteManager.ts';
+export type { GlobalMuteListener } from './core/GlobalMuteManager.ts';
+export { MediaSessionManager } from './integrations/MediaSessionManager.ts';
+export type {
+  MediaSessionMetadataInput,
+  MediaSessionHandlers,
+} from './integrations/MediaSessionManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
@@ -21,9 +32,17 @@ export { PipButton } from './components/controls/PipButton.tsx';
 export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
 
+export {
+  GlobalMuteContext,
+  GlobalMuteProvider,
+} from './components/context/GlobalMuteContext.tsx';
+export type { GlobalMuteContextValue } from './components/context/GlobalMuteContext.tsx';
+
 export { useMediaPlyr } from './hooks/useMediaPlyr.ts';
 export { useQueue } from './hooks/useQueue.ts';
 export { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.ts';
+export { useGlobalMute } from './hooks/useGlobalMute.ts';
+export type { UseGlobalMuteResult } from './hooks/useGlobalMute.ts';
 
 export { formatTime } from './utils/formatTime.ts';
 export { orderSources, DEFAULT_SOURCE_ORDER } from './utils/orderSources.ts';
@@ -60,6 +79,8 @@ export type {
   MediaPlyrInstance,
   RawManifest,
   RawMedia,
+  MediaMetadataFrame,
+  MediaMetadataEvent,
 } from './types/index.ts';
 
 export type {

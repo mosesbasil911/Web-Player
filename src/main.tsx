@@ -1,10 +1,13 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { GlobalMuteProvider } from '@media-plyr/components/context/GlobalMuteContext.tsx';
+import './index.css';
+import App from './App.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <GlobalMuteProvider>
+      <App />
+    </GlobalMuteProvider>
   </StrictMode>,
-)
+);

@@ -1,4 +1,5 @@
-import type { MediaPlyrInstance, PlaybackState } from "../../types/index.ts";
+import { useGlobalMute } from '../../hooks/useGlobalMute.ts';
+import type { MediaPlyrInstance, PlaybackState } from '../../types/index.ts';
 
 interface MuteButtonProps {
   player: MediaPlyrInstance | null;
@@ -6,19 +7,24 @@ interface MuteButtonProps {
 }
 
 export function MuteButton({ player, state }: MuteButtonProps) {
+  const { muted: globalMuted, toggle } = useGlobalMute();
+  const muted = state.muted || globalMuted;
+
   const handleClick = () => {
-    player?.setMuted(!state.muted);
+    const next = toggle();
+    player?.setMuted(next);
   };
 
-  const volumeHigh = !state.muted && state.volume > 0.5;
-  const volumeLow = !state.muted && state.volume > 0 && state.volume <= 0.5;
-  const volumeOff = state.muted || state.volume === 0;
+  const volumeHigh = !muted && state.volume > 0.5;
+  const volumeLow = !muted && state.volume > 0 && state.volume <= 0.5;
+  const volumeOff = muted || state.volume === 0;
 
   return (
     <button
       className="media-plyr__btn media-plyr__btn--mute"
       onClick={handleClick}
-      aria-label={state.muted ? "Unmute" : "Mute"}
+      aria-label={muted ? 'Unmute' : 'Mute'}
+      aria-pressed={muted}
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
         <path d="M11 5L6 9H2v6h4l5 4V5z" />

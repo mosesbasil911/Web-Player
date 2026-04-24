@@ -233,6 +233,28 @@ export interface QueueState {
   shuffle: boolean;
 }
 
+/**
+ * Timed metadata frame surfaced to consumers (typically ID3 tags embedded
+ * in HLS/CMAF streams). Mirrors Shaka's `MetadataFrame` shape but trimmed
+ * to the fields we need.
+ */
+export interface MediaMetadataFrame {
+  /** Frame identifier — for ID3 this is the 4-char frame ID (e.g. `TIT2`). */
+  key: string;
+  description: string;
+  data: string | number | ArrayBuffer | null;
+  mimeType: string | null;
+  pictureType: number | null;
+}
+
+export interface MediaMetadataEvent {
+  startTime: number;
+  endTime: number | null;
+  /** Scheme URI / metadata source descriptor (e.g. `org.id3`, `com.apple.id3`). */
+  metadataType: string;
+  frames: MediaMetadataFrame[];
+}
+
 export interface MediaPlyrInstance {
   play(): Promise<void>;
   pause(): void;

@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useMediaPlyr } from "../hooks/useMediaPlyr.ts";
-import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
-import { PlaybackMemory } from "../core/PlaybackMemory.ts";
-import { ControlBar } from "./controls/ControlBar.tsx";
-import { ErrorOverlay } from "./overlays/ErrorOverlay.tsx";
-import { BufferingOverlay } from "./overlays/BufferingOverlay.tsx";
-import type { VideoPlayerProps, RepeatMode } from "../types/index.ts";
-import "../styles/media-plyr.css";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMediaPlyr } from '../hooks/useMediaPlyr.ts';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.ts';
+import { useGlobalMute } from '../hooks/useGlobalMute.ts';
+import { PlaybackMemory } from '../core/PlaybackMemory.ts';
+import { ControlBar } from './controls/ControlBar.tsx';
+import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
+import { BufferingOverlay } from './overlays/BufferingOverlay.tsx';
+import type { VideoPlayerProps, RepeatMode } from '../types/index.ts';
+import '../styles/media-plyr.css';
 
 export function VideoPlayer({
   config,
@@ -39,7 +40,15 @@ export function VideoPlayer({
 
   useKeyboardShortcuts(player, state);
 
-  const [repeat, setRepeat] = useState<RepeatMode>("none");
+  const { muted: globalMuted } = useGlobalMute();
+  useEffect(() => {
+    if (!player) return;
+    if (state.muted !== globalMuted) {
+      player.setMuted(globalMuted);
+    }
+  }, [player, globalMuted, state.muted]);
+
+  const [repeat, setRepeat] = useState<RepeatMode>('none');
   const [shuffle, setShuffle] = useState(false);
 
   useEffect(() => {
@@ -61,7 +70,7 @@ export function VideoPlayer({
       onError({
         code: error.code,
         message: error.message,
-        severity: "fatal",
+        severity: 'fatal',
       });
     }
   }, [error, onError]);
@@ -75,12 +84,12 @@ export function VideoPlayer({
 
   if (hasFatalError) {
     return (
-      <div className={`media-plyr media-plyr--error ${className ?? ""}`}>
+      <div className={`media-plyr media-plyr--error ${className ?? ''}`}>
         <ErrorOverlay
           error={{
             code: error.code,
             message: error.message,
-            severity: "fatal",
+            severity: 'fatal',
           }}
           onRetry={handleRetry}
         />
@@ -89,7 +98,7 @@ export function VideoPlayer({
   }
 
   return (
-    <div className={`media-plyr media-plyr--video ${className ?? ""}`}>
+    <div className={`media-plyr media-plyr--video ${className ?? ''}`}>
       <div className="media-plyr__container">
         <video
           ref={ref}
