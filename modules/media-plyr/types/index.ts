@@ -28,6 +28,13 @@ export interface MediaTrack {
   poster?: string;
   duration?: number;
   subtitles?: SubtitleTrack[];
+  /**
+   * Timed lyrics for audio tracks. Rendered as a karaoke-style scrolling
+   * panel (active line highlighted + scrolled into view) by the
+   * `<AudioPlayer>` when present. Independent from `subtitles` to keep the
+   * caption rendering pipeline decoupled from lyric rendering.
+   */
+  lyrics?: LyricsTrack;
   drmConfig?: DrmConfig;
   adsConfig?: AdsConfig;
 }
@@ -36,7 +43,17 @@ export interface SubtitleTrack {
   src: string;
   language: string;
   label: string;
+  /** WebVTT MIME type override. Defaults to `text/vtt`. */
+  mimeType?: string;
+  /** Selected and made visible by default. Only one track should set this. */
   default?: boolean;
+}
+
+export interface LyricsTrack {
+  /** URL to a WebVTT (.vtt) file containing time-coded lyric lines. */
+  src: string;
+  language?: string;
+  label?: string;
 }
 
 export interface DrmConfig {
@@ -62,6 +79,30 @@ export interface CastConfig {
 
 export interface OfflineConfig {
   enabled: boolean;
+}
+
+/**
+ * A descriptor for a text track that can be selected for display. Returned
+ * by `MediaPlyrInstance.getTextTracks()` and emitted alongside the
+ * `'texttrackchange'` event.
+ *
+ * Mirrors the relevant subset of Shaka's `extern.TextTrack` shape, plus the
+ * application-level `active`/`visible` flags so consumers don't have to
+ * cross-reference player state.
+ */
+export interface TextTrackInfo {
+  id: number;
+  language: string;
+  label: string | null;
+  kind: string | null;
+  active: boolean;
+  forced: boolean;
+}
+
+export interface TextTrackChangeEvent {
+  tracks: TextTrackInfo[];
+  active: TextTrackInfo | null;
+  visible: boolean;
 }
 
 export interface AbrConfig {
@@ -206,7 +247,11 @@ export type MediaPlyrEventType =
   | 'adstart'
   | 'adend'
   | 'adskip'
-  | 'metadata';
+  | 'metadata'
+  | 'texttrackchange'
+  | 'offlineprogress'
+  | 'offlinestored'
+  | 'offlineremoved';
 
 export type MediaPlyrEventCallback = (data?: unknown) => void;
 
@@ -271,6 +316,17 @@ export interface MediaPlyrInstance {
 
   getPlaybackState(): PlaybackState;
 
+  /** Available subtitle/caption tracks. Empty until the manifest has loaded. */
+  getTextTracks(): TextTrackInfo[];
+  /**
+   * Select a text track by id. Pass `null` to clear the selection. Selecting
+   * a track does not implicitly toggle visibility — call `setTextVisible`.
+   */
+  selectTextTrack(id: number | null): void;
+  /** Show or hide the currently selected text track. */
+  setTextVisible(visible: boolean): void;
+  isTextVisible(): boolean;
+
   on(event: MediaPlyrEventType, callback: MediaPlyrEventCallback): void;
   off(event: MediaPlyrEventType, callback: MediaPlyrEventCallback): void;
 
@@ -295,4 +351,41 @@ export interface RawMedia {
   m3u8?: RawManifest;
   /** DASH manifest (.mpd). */
   mpd?: RawManifest;
+}
+
+// ---------------------------------------------------------------------------
+// Offline storage
+// ---------------------------------------------------------------------------
+
+/** Application-level metadata persisted alongside an offline asset. */
+export interface OfflineAppMetadata {
+  title?: string;
+  artist?: string;
+  artwork?: string;
+  [key: string]: unknown;
+}
+
+export interface OfflineDownloadOptions {
+  /** Mime type for the manifest URL (e.g. `application/dash+xml`). */
+  mimeType?: string;
+  /** Application metadata persisted alongside the asset. */
+  appMetadata?: OfflineAppMetadata;
+  /** Called with progress in [0, 1]. */
+  onProgress?: (progress: number) => void;
+}
+
+export interface OfflineStoredAsset {
+  /** `offline:` URI to be passed to the player to play back this asset. */
+  offlineUri: string;
+  /** Source manifest URL the asset was downloaded from. */
+  originalManifestUri: string;
+  duration: number;
+  size: number;
+  isIncomplete: boolean;
+  appMetadata: OfflineAppMetadata | null;
+}
+
+export interface OfflineProgressEvent {
+  offlineUri: string | null;
+  progress: number;
 }

@@ -58,6 +58,24 @@ export function useKeyboardShortcuts(
           e.preventDefault();
           player.toggleFullscreen();
           break;
+
+        case "c":
+        case "C": {
+          e.preventDefault();
+          const textTracks = player.getTextTracks();
+          if (textTracks.length === 0) break;
+
+          if (player.isTextVisible()) {
+            player.setTextVisible(false);
+          } else {
+            const active = textTracks.find((t) => t.active);
+            if (!active) {
+              player.selectTextTrack(textTracks[0].id);
+            }
+            player.setTextVisible(true);
+          }
+          break;
+        }
       }
     };
 

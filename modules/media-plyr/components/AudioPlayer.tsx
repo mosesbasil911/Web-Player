@@ -15,6 +15,7 @@ import { PrevNextButtons } from './controls/PrevNextButtons.tsx';
 import { RepeatShuffleButtons } from './controls/RepeatShuffleButtons.tsx';
 import { SpeedSelector } from './controls/SpeedSelector.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
+import { LyricsPanel } from './LyricsPanel.tsx';
 import { formatTime } from '../utils/formatTime.ts';
 import type {
   AudioPlayerProps,
@@ -134,8 +135,20 @@ export function AudioPlayer({
   }, [player, globalMuted, state.muted]);
 
   const [queueOpen, setQueueOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
   const endedHandledRef = useRef(false);
   const queueFinishedRef = useRef(false);
+
+  // Auto-close the lyrics panel when navigating to a track that has none,
+  // and re-open it on a track that does — but only on track CHANGE, not
+  // on every render, so the user's manual toggle is respected.
+  const lyricsTrackKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const key = currentTrack?.lyrics?.src ?? null;
+    if (key === lyricsTrackKeyRef.current) return;
+    lyricsTrackKeyRef.current = key;
+    if (!key) setLyricsOpen(false);
+  }, [currentTrack]);
 
   useEffect(() => {
     if (!memoryConfig?.enabled || !player?.videoElement) return;
@@ -497,6 +510,30 @@ export function AudioPlayer({
             <MuteButton player={player} state={state} />
             <VolumeControl player={player} state={state} />
             <SpeedSelector player={player} state={state} />
+            {currentTrack?.lyrics && (
+              <button
+                className={`media-plyr__btn media-plyr__btn--lyrics${lyricsOpen ? ' media-plyr__btn--active' : ''}`}
+                onClick={() => setLyricsOpen((v) => !v)}
+                aria-label={lyricsOpen ? 'Hide lyrics' : 'Show lyrics'}
+                aria-pressed={lyricsOpen}
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M9 18V5l12-2v13" />
+                  <circle cx="6" cy="18" r="3" />
+                  <circle cx="18" cy="16" r="3" />
+                  <path d="M3 9h6" />
+                </svg>
+              </button>
+            )}
             {isPlaylist && (
               <button
                 className={`media-plyr__btn media-plyr__btn--queue${queueOpen ? ' media-plyr__btn--active' : ''}`}
@@ -585,6 +622,12 @@ export function AudioPlayer({
             </ul>
           </div>
         )}
+
+        <LyricsPanel
+          lyrics={currentTrack?.lyrics ?? null}
+          currentTime={state.currentTime}
+          visible={lyricsOpen}
+        />
 
         {/* Loading indicator */}
         {!ready && (
