@@ -12,6 +12,9 @@ import type {
   MediaPlyrError,
   MediaMetadataEvent,
   MediaMetadataFrame,
+  TextTrackInfo,
+  TextTrackChangeEvent,
+  SubtitleTrack,
 } from '../types/index.ts';
 
 shaka.polyfill.installAll();
@@ -23,6 +26,15 @@ export class MediaPlyr implements MediaPlyrInstance {
   private element: HTMLVideoElement | HTMLAudioElement | null = null;
   private destroyed = false;
   private _waiting = false;
+  /**
+   * Caption / subtitle visibility state tracked here rather than via
+   * Shaka's internal TextDisplayer because `isTextVisible` /
+   * `setTextVisibility` are NOT public methods on `shaka.Player` in
+   * Shaka 5.x (they live only on the displayer implementations). We own
+   * the container element, so we toggle a `data-captions-off` attribute
+   * on it and let CSS control the `.shaka-text-container` visibility.
+   */
+  private _textVisible = false;
 
   constructor(config: MediaPlyrConfig) {
     this.config = config;
@@ -76,6 +88,8 @@ export class MediaPlyr implements MediaPlyrInstance {
     try {
       await this.loadWithShaka(element, manifest);
       if (this.destroyed) return;
+      await this.applySubtitleTracks();
+      if (this.destroyed) return;
       this.emitter.emit('loaded');
 
       if (this.config.autoplay) {
@@ -111,6 +125,8 @@ export class MediaPlyr implements MediaPlyrInstance {
 
     try {
       await this.player.load(manifest.url, config.startTime);
+      if (this.destroyed) return;
+      await this.applySubtitleTracks();
       if (this.destroyed) return;
       this.emitter.emit('loaded');
 
@@ -234,6 +250,39 @@ export class MediaPlyr implements MediaPlyrInstance {
     };
   }
 
+  getTextTracks(): TextTrackInfo[] {
+    if (!this.player) return [];
+    return this.player.getTextTracks().map(toTextTrackInfo);
+  }
+
+  selectTextTrack(id: number | null): void {
+    if (!this.player) return;
+    if (id === null) {
+      this.player.selectTextTrack(null);
+      this.emitTextTrackChange();
+      return;
+    }
+    const track = this.player.getTextTracks().find((t) => t.id === id);
+    if (!track) return;
+    this.player.selectTextTrack(track);
+    this.emitTextTrackChange();
+  }
+
+  setTextVisible(visible: boolean): void {
+    this._textVisible = visible;
+    // Toggle a data attribute on the container so CSS can show/hide
+    // `.shaka-text-container` without touching Shaka internals.
+    const container = this.element?.parentElement;
+    if (container) {
+      container.toggleAttribute('data-captions-off', !visible);
+    }
+    this.emitTextTrackChange();
+  }
+
+  isTextVisible(): boolean {
+    return this._textVisible;
+  }
+
   on(event: MediaPlyrEventType, callback: MediaPlyrEventCallback): void {
     this.emitter.on(event, callback);
   }
@@ -306,6 +355,22 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (!this.player) {
       this.player = new shaka.Player();
       await this.player.attach(element);
+      // Hand Shaka the wrapping container so its UITextDisplayer renders
+      // caption cues into a DOM overlay we can style with CSS, instead of
+      // falling back to the browser's native (and very limited) text track
+      // rendering. Audio elements have no meaningful container — we skip
+      // and use cue-level subscriptions for lyrics instead.
+      if (element instanceof HTMLVideoElement && element.parentElement) {
+        this.player.setVideoContainer(element.parentElement);
+        // setVideoContainer() only stores the container reference — it does
+        // NOT automatically switch the displayer factory. Shaka's default is
+        // NativeTextDisplayer which renders captions inside the <video>
+        // element via native TextTrack mode, completely outside our DOM and
+        // unreachable by CSS. Explicitly configuring UITextDisplayer forces
+        // Shaka to mount a .shaka-text-container div inside our container,
+        // which our data-captions-off CSS rule can then show/hide.
+        this.configureUITextDisplayer();
+      }
       this.configureDrm();
       this.configureAbr();
       this.configureStreaming();
@@ -316,6 +381,22 @@ export class MediaPlyr implements MediaPlyrInstance {
 
   private isShakaSupported(): boolean {
     return shaka.Player.isBrowserSupported();
+  }
+
+  private configureUITextDisplayer(): void {
+    if (!this.player) return;
+    // Shaka 5.x changed the factory signature to `(player) => TextDisplayer`.
+    // `UITextDisplayer` renders cues into a `.shaka-text-container` div
+    // inside the video container we set via `setVideoContainer()`, which
+    // lets our CSS control caption visibility.
+    type UITextDisplayerCtor = new (player: shaka.Player) => object;
+    const Ctor = (shaka as unknown as { text?: { UITextDisplayer?: UITextDisplayerCtor } })
+      .text?.UITextDisplayer;
+    if (!Ctor) return;
+
+    this.player.configure({
+      textDisplayFactory: (p: shaka.Player) => new Ctor(p),
+    });
   }
 
   private configureAbr(): void {
@@ -339,7 +420,12 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (!this.player) return;
 
     const sc = this.config.streaming;
-    const streamingConfig: Record<string, unknown> = {};
+    const streamingConfig: Record<string, unknown> = {
+      // Evict buffer more than 30 s behind the playhead so backward seeks
+      // don't collide with stale SourceBuffer data (prevents
+      // CHUNK_DEMUXER_ERROR_APPEND_FAILED on DASH).
+      bufferBehind: 30,
+    };
 
     if (sc?.rebufferingGoal !== undefined) streamingConfig.rebufferingGoal = sc.rebufferingGoal;
     if (sc?.bufferingGoal !== undefined) streamingConfig.bufferingGoal = sc.bufferingGoal;
@@ -347,9 +433,7 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (sc?.lowLatencyMode !== undefined) streamingConfig.lowLatencyMode = sc.lowLatencyMode;
     if (sc?.retryParameters) streamingConfig.retryParameters = sc.retryParameters;
 
-    if (Object.keys(streamingConfig).length > 0) {
-      this.player.configure('streaming', streamingConfig);
-    }
+    this.player.configure('streaming', streamingConfig);
   }
 
   private mediaEventHandlers = new Map<string, EventListener>();
@@ -429,11 +513,41 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.mediaEventHandlers.clear();
   }
 
+  private _seekRecoveryAttempted = false;
+
   private bindShakaEvents(): void {
     if (!this.player) return;
 
     this.player.addEventListener('error', (event: Event) => {
       const detail = (event as unknown as { detail: shaka.util.Error }).detail;
+
+      // Shaka 3015 = CHUNK_DEMUXER_ERROR_APPEND_FAILED. When this fires
+      // mid-seek the SourceBuffer rejected a segment due to overlapping
+      // buffer data. Reload at the current position once before giving up.
+      if (
+        detail.code === 3015 &&
+        this.element &&
+        !this._seekRecoveryAttempted
+      ) {
+        this._seekRecoveryAttempted = true;
+        const pos = this.element.currentTime;
+        const manifest = this.pickManifest();
+        if (manifest && this.player) {
+          console.warn(
+            '[mediaPlyr] append failed during seek — reloading at',
+            pos,
+          );
+          this.player.load(manifest.url, pos).then(() => {
+            this._seekRecoveryAttempted = false;
+          }).catch((err) => {
+            this._seekRecoveryAttempted = false;
+            this.handleShakaError(err);
+          });
+          return;
+        }
+      }
+      this._seekRecoveryAttempted = false;
+
       this.handleError({
         code: detail.code,
         message: detail.message || `Shaka error code ${detail.code}`,
@@ -448,6 +562,83 @@ export class MediaPlyr implements MediaPlyrInstance {
       const payload = this.normalizeShakaMetadata(event);
       if (payload) this.emitter.emit('metadata', payload);
     });
+
+    const onTextChange = () => this.emitTextTrackChange();
+    this.player.addEventListener('trackschanged', onTextChange);
+    this.player.addEventListener('textchanged', onTextChange);
+  }
+
+  private emitTextTrackChange(): void {
+    if (!this.player) return;
+    const tracks = this.player.getTextTracks().map(toTextTrackInfo);
+    const active = tracks.find((t) => t.active) ?? null;
+    const payload: TextTrackChangeEvent = {
+      tracks,
+      active,
+      visible: this._textVisible,
+    };
+    this.emitter.emit('texttrackchange', payload);
+  }
+
+  /**
+   * Adds any sidecar WebVTT tracks declared in `config.subtitles` to the
+   * loaded manifest, then applies the initial visibility/selection. Must be
+   * called after `player.load()` resolves — Shaka rejects
+   * `addTextTrackAsync` calls before that point.
+   */
+  private async applySubtitleTracks(): Promise<void> {
+    if (!this.player) return;
+    const subtitles = this.config.subtitles;
+
+    if (subtitles && subtitles.length > 0) {
+      // Run sidecar additions in parallel; Shaka tolerates concurrent calls
+      // and de-duplicates internally by uri+language+kind.
+      await Promise.all(
+        subtitles.map((sub) => this.addSidecarSubtitle(sub).catch((err) => {
+          // Don't tear down playback for a single bad VTT — surface it as
+          // a recoverable error and continue.
+          this.handleError({
+            code: 1100,
+            message: `Failed to load subtitle "${sub.label}" (${sub.language})`,
+            severity: 'recoverable',
+            detail: err,
+          });
+        })),
+      );
+    }
+
+    if (this.destroyed || !this.player) return;
+
+    // Pick a default track + visibility from the config, otherwise leave
+    // Shaka's manifest-driven defaults alone (some HLS/DASH manifests mark
+    // a forced track as primary).
+    const defaultSub = subtitles?.find((s) => s.default);
+    if (defaultSub) {
+      const tracks = this.player.getTextTracks();
+      const match = tracks.find(
+        (t) => t.language === defaultSub.language
+          && (defaultSub.label ? t.label === defaultSub.label : true),
+      );
+      if (match) {
+        this.player.selectTextTrack(match);
+        this.setTextVisible(true);
+      }
+    }
+
+    this.emitTextTrackChange();
+  }
+
+  private async addSidecarSubtitle(sub: SubtitleTrack): Promise<void> {
+    if (!this.player) return;
+    const mimeType = sub.mimeType ?? 'text/vtt';
+    await this.player.addTextTrackAsync(
+      sub.src,
+      sub.language,
+      'subtitles',
+      mimeType,
+      undefined,
+      sub.label,
+    );
   }
 
   /**
@@ -555,4 +746,29 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (!this.element || !this.element.buffered.length) return 0;
     return this.element.buffered.end(this.element.buffered.length - 1);
   }
+}
+
+/**
+ * Map Shaka's `extern.TextTrack` to our application-level descriptor.
+ * Typed as `unknown` here because Shaka's compiled `.d.ts` bundles the type
+ * inside `shaka.extern` which is non-trivial to reference statically — we
+ * pluck the fields we care about defensively.
+ */
+function toTextTrackInfo(track: unknown): TextTrackInfo {
+  const t = track as {
+    id?: number;
+    language?: string;
+    label?: string | null;
+    kind?: string | null;
+    active?: boolean;
+    forced?: boolean;
+  };
+  return {
+    id: typeof t.id === 'number' ? t.id : -1,
+    language: t.language ?? 'und',
+    label: t.label ?? null,
+    kind: t.kind ?? null,
+    active: !!t.active,
+    forced: !!t.forced,
+  };
 }

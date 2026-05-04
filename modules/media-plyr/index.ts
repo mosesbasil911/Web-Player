@@ -13,9 +13,11 @@ export type {
   MediaSessionMetadataInput,
   MediaSessionHandlers,
 } from './integrations/MediaSessionManager.ts';
+export { OfflineManager } from './integrations/OfflineManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
+export { LyricsPanel } from './components/LyricsPanel.tsx';
 
 export { ControlBar } from './components/controls/ControlBar.tsx';
 export { PlayPauseButton } from './components/controls/PlayPauseButton.tsx';
@@ -28,6 +30,7 @@ export { SpeedSelector } from './components/controls/SpeedSelector.tsx';
 export { PrevNextButtons } from './components/controls/PrevNextButtons.tsx';
 export { RepeatShuffleButtons } from './components/controls/RepeatShuffleButtons.tsx';
 export { PipButton } from './components/controls/PipButton.tsx';
+export { CaptionButton } from './components/controls/CaptionButton.tsx';
 
 export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
@@ -48,6 +51,8 @@ export { formatTime } from './utils/formatTime.ts';
 export { orderSources, DEFAULT_SOURCE_ORDER } from './utils/orderSources.ts';
 export { mapRawMediaToSources } from './utils/mapRawMedia.ts';
 export { detectSupport } from './utils/detectSupport.ts';
+export { parseVtt } from './utils/parseVtt.ts';
+export type { VttCue } from './utils/parseVtt.ts';
 
 export type {
   MediaKind,
@@ -59,6 +64,9 @@ export type {
   AdBreakType,
   MediaTrack,
   SubtitleTrack,
+  LyricsTrack,
+  TextTrackInfo,
+  TextTrackChangeEvent,
   DrmConfig,
   AdsConfig,
   AdBreak,
@@ -81,6 +89,10 @@ export type {
   RawMedia,
   MediaMetadataFrame,
   MediaMetadataEvent,
+  OfflineAppMetadata,
+  OfflineDownloadOptions,
+  OfflineStoredAsset,
+  OfflineProgressEvent,
 } from './types/index.ts';
 
 export type {

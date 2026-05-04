@@ -2,17 +2,18 @@ import type {
   MediaPlyrInstance,
   PlaybackState,
   RepeatMode,
-} from "../../types/index.ts";
-import { PlayPauseButton } from "./PlayPauseButton.tsx";
-import { SeekBar } from "./SeekBar.tsx";
-import { VolumeControl } from "./VolumeControl.tsx";
-import { MuteButton } from "./MuteButton.tsx";
-import { TimeDisplay } from "./TimeDisplay.tsx";
-import { FullscreenButton } from "./FullscreenButton.tsx";
-import { SpeedSelector } from "./SpeedSelector.tsx";
-import { PrevNextButtons } from "./PrevNextButtons.tsx";
-import { RepeatShuffleButtons } from "./RepeatShuffleButtons.tsx";
-import { PipButton } from "./PipButton.tsx";
+} from '../../types/index.ts';
+import { PlayPauseButton } from './PlayPauseButton.tsx';
+import { SeekBar } from './SeekBar.tsx';
+import { VolumeControl } from './VolumeControl.tsx';
+import { MuteButton } from './MuteButton.tsx';
+import { TimeDisplay } from './TimeDisplay.tsx';
+import { FullscreenButton } from './FullscreenButton.tsx';
+import { SpeedSelector } from './SpeedSelector.tsx';
+import { PrevNextButtons } from './PrevNextButtons.tsx';
+import { RepeatShuffleButtons } from './RepeatShuffleButtons.tsx';
+import { PipButton } from './PipButton.tsx';
+import { CaptionButton } from './CaptionButton.tsx';
 
 export interface ControlBarProps {
   player: MediaPlyrInstance | null;
@@ -36,7 +37,7 @@ export function ControlBar({
   hasNext,
   onPrev,
   onNext,
-  repeat = "none",
+  repeat = 'none',
   shuffle = false,
   onRepeatChange,
   onShuffleChange,
@@ -69,6 +70,7 @@ export function ControlBar({
             onShuffleChange={onShuffleChange}
           />
           <SpeedSelector player={player} state={state} />
+          <CaptionButton player={player} />
           <PipButton player={player} state={state} />
           <FullscreenButton player={player} state={state} />
         </div>
