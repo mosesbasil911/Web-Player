@@ -14,6 +14,10 @@ interface DemoSource {
   config: MediaPlyrConfig;
 }
 
+const CAST_CONFIG = {
+  receiverApplicationId: 'CC1AD845',
+};
+
 const DEMO_SOURCES: DemoSource[] = [
   {
     label: 'Mux HLS Test Stream',
@@ -30,6 +34,7 @@ const DEMO_SOURCES: DemoSource[] = [
       poster:
         'https://peach.blender.org/wp-content/uploads/title_anouncement.thumbnail.jpg',
       playbackMemory: { enabled: true },
+      cast: CAST_CONFIG,
     },
   },
   {
@@ -44,6 +49,7 @@ const DEMO_SOURCES: DemoSource[] = [
       ],
       title: 'Angel One (Shaka Demo, DASH)',
       autoplay: false,
+      cast: CAST_CONFIG,
     },
   },
   {
@@ -62,6 +68,7 @@ const DEMO_SOURCES: DemoSource[] = [
       ],
       title: 'Sintel — HLS preferred on iOS, DASH elsewhere',
       autoplay: false,
+      cast: CAST_CONFIG,
     },
   },
 ];

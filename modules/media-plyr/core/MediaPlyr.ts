@@ -230,6 +230,8 @@ export class MediaPlyr implements MediaPlyrInstance {
         pip: false,
         seeking: false,
         waiting: false,
+        casting: false,
+        castDeviceName: null,
       };
     }
 
@@ -247,6 +249,8 @@ export class MediaPlyr implements MediaPlyrInstance {
       pip: document.pictureInPictureElement === el,
       seeking: el.seeking,
       waiting: this._waiting,
+      casting: false,
+      castDeviceName: null,
     };
   }
 

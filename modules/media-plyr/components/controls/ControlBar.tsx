@@ -2,6 +2,7 @@ import type {
   MediaPlyrInstance,
   PlaybackState,
   RepeatMode,
+  CastConfig,
 } from '../../types/index.ts';
 import { PlayPauseButton } from './PlayPauseButton.tsx';
 import { SeekBar } from './SeekBar.tsx';
@@ -14,6 +15,7 @@ import { PrevNextButtons } from './PrevNextButtons.tsx';
 import { RepeatShuffleButtons } from './RepeatShuffleButtons.tsx';
 import { PipButton } from './PipButton.tsx';
 import { CaptionButton } from './CaptionButton.tsx';
+import { CastButton } from './CastButton.tsx';
 
 export interface ControlBarProps {
   player: MediaPlyrInstance | null;
@@ -28,6 +30,8 @@ export interface ControlBarProps {
   shuffle?: boolean;
   onRepeatChange?: (mode: RepeatMode) => void;
   onShuffleChange?: (shuffle: boolean) => void;
+
+  castConfig?: CastConfig;
 }
 
 export function ControlBar({
@@ -41,6 +45,7 @@ export function ControlBar({
   shuffle = false,
   onRepeatChange,
   onShuffleChange,
+  castConfig,
 }: ControlBarProps) {
   return (
     <div className="media-plyr__controls">
@@ -71,6 +76,7 @@ export function ControlBar({
           />
           <SpeedSelector player={player} state={state} />
           <CaptionButton player={player} />
+          <CastButton player={player} state={state} castConfig={castConfig} />
           <PipButton player={player} state={state} />
           <FullscreenButton player={player} state={state} />
         </div>

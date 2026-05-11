@@ -537,6 +537,21 @@
   background: var(--plyr-accent-hover);
 }
 
+/* ---- Cast Button ---- */
+.media-plyr__btn--cast-connecting {
+  animation: media-plyr-cast-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes media-plyr-cast-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 /* Compact: hide secondary controls */
 .media-plyr__btn--prev,
 .media-plyr__btn--next,
