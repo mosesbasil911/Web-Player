@@ -14,6 +14,7 @@ export type {
   MediaSessionHandlers,
 } from './integrations/MediaSessionManager.ts';
 export { OfflineManager } from './integrations/OfflineManager.ts';
+export { CastManager } from './integrations/CastManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
@@ -31,6 +32,8 @@ export { PrevNextButtons } from './components/controls/PrevNextButtons.tsx';
 export { RepeatShuffleButtons } from './components/controls/RepeatShuffleButtons.tsx';
 export { PipButton } from './components/controls/PipButton.tsx';
 export { CaptionButton } from './components/controls/CaptionButton.tsx';
+export { CastButton } from './components/controls/CastButton.tsx';
+export type { CastButtonProps } from './components/controls/CastButton.tsx';
 
 export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
@@ -71,6 +74,8 @@ export type {
   AdsConfig,
   AdBreak,
   CastConfig,
+  CastConnectionState,
+  CastStateEvent,
   OfflineConfig,
   AbrConfig,
   StreamingConfig,

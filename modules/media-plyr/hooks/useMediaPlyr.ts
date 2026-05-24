@@ -16,6 +16,8 @@ const DEFAULT_STATE: PlaybackState = {
   pip: false,
   seeking: false,
   waiting: false,
+  casting: false,
+  castDeviceName: null,
 };
 
 export function useMediaPlyr(config: MediaPlyrConfig) {
@@ -65,7 +67,7 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
     const stateEvents = [
       'play', 'pause', 'ended', 'timeupdate', 'volumechange',
       'ratechange', 'seeking', 'seeked', 'buffering',
-      'fullscreenchange', 'pipchange',
+      'fullscreenchange', 'pipchange', 'caststate',
     ] as const;
     for (const event of stateEvents) {
       plyr.on(event, () => setState(plyr.getPlaybackState()));

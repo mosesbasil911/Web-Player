@@ -72,9 +72,22 @@ export interface AdBreak {
   tagUrl: string;
 }
 
+export type CastConnectionState =
+  | 'NO_DEVICES_AVAILABLE'
+  | 'NOT_CONNECTED'
+  | 'CONNECTING'
+  | 'CONNECTED';
+
 export interface CastConfig {
   receiverApplicationId?: string;
   autoJoinPolicy?: string;
+  language?: string;
+}
+
+export interface CastStateEvent {
+  connected: boolean;
+  connectionState: CastConnectionState;
+  deviceName: string | null;
 }
 
 export interface OfflineConfig {
@@ -269,6 +282,8 @@ export interface PlaybackState {
   pip: boolean;
   seeking: boolean;
   waiting: boolean;
+  casting: boolean;
+  castDeviceName: string | null;
 }
 
 export interface QueueState {

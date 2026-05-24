@@ -129,6 +129,7 @@ export function VideoPlayer({
           shuffle={shuffle}
           onRepeatChange={setRepeat}
           onShuffleChange={setShuffle}
+          castConfig={config.cast}
         />
       </div>
     </div>
