@@ -503,6 +503,20 @@
   padding: 32px;
 }
 
+/* Overlay mode — shown on top of the player while keeping the media element
+   mounted so offline playback can still call loadSource(). */
+.media-plyr__container .media-plyr__error-overlay,
+.media-plyr-audio .media-plyr__error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(26, 26, 46, 0.95);
+  z-index: 20;
+}
+
 .media-plyr__error-icon {
   font-size: 48px;
   margin-bottom: 16px;

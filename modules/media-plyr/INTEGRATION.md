@@ -58,6 +58,7 @@ Wrap the media element in a container div. Shaka renders captions into the **par
 
 ```typescript
 import { MediaPlyr } from './media-plyr/core/MediaPlyr.ts';
+import type { MediaPlyrError } from './media-plyr/types/index.ts';
 
 const video = document.getElementById('player') as HTMLVideoElement;
 
@@ -91,8 +92,12 @@ player.on('loaded', () => {
 });
 
 player.on('error', (err) => {
-  const error = err as { code: number; message: string; severity: string };
-  showError(error.message);
+  const error = err as MediaPlyrError;
+  if (error.severity === 'fatal') {
+    showFatalError(error.message);
+  }
+  // Recoverable errors (autoplay blocked, subtitle load failure, etc.)
+  // should not block the UI — handle them inline or ignore.
 });
 ```
 
@@ -125,15 +130,21 @@ Always call `destroy()` when removing the player from the page (route change, co
 new MediaPlyr(config)
        │
        ▼
-  attach(<video>|<audio>)  ──► loads manifest via Shaka
+  attach(<video>|<audio>)  ──► binds Shaka to the element, starts loading
+       │                       (promise resolves — player is usable even if
+       │                        the manifest fetch fails)
        │
-       ├── on('loaded')     ──► safe to read duration, enable controls
+       ├── on('loaded')     ──► manifest ready; safe to read duration
+       ├── on('error')       ──► load or playback failure (see below)
        ├── on('play'|'pause'|'timeupdate'|…)
        │
   loadSource(newConfig)      ──► switch track without recreating player
+       │                       (errors emit 'error'; promise does not reject)
        │
   destroy()                  ──► tear down Shaka + listeners
 ```
+
+**`attach()` vs `'loaded'`:** After `await player.attach(element)`, the instance is ready for imperative calls (`loadSource`, `play`, passing to `OfflineManager`, etc.) even when the initial network request fails. Wait for `'loaded'` before reading `duration` or enabling seek UI. In the React components, `onReady` fires at attach time — not on `'loaded'`.
 
 ---
 
@@ -249,28 +260,28 @@ abr: {
 
 ## Player API (`MediaPlyrInstance`)
 
-| Method                        | Description                                                       |
-| ----------------------------- | ----------------------------------------------------------------- |
-| `attach(element)`             | Bind to a `<video>` or `<audio>` element and load the manifest    |
-| `loadSource(config)`          | Load a new manifest without destroying the player                 |
-| `play()`                      | Start playback (returns a Promise; may reject on autoplay policy) |
-| `pause()`                     | Pause playback                                                    |
-| `stop()`                      | Pause and seek to 0                                               |
-| `seek(time)`                  | Seek to position in seconds                                       |
-| `setVolume(0–1)`              | Set volume                                                        |
-| `setMuted(bool)`              | Mute / unmute                                                     |
-| `setPlaybackRate(rate)`       | Set speed (0.25 – 2)                                              |
-| `toggleFullscreen()`          | Enter / exit fullscreen on the video container                    |
-| `togglePip()`                 | Enter / exit picture-in-picture (video only)                      |
-| `getPlaybackState()`          | Snapshot of current playback state                                |
-| `getTextTracks()`             | Available subtitle/caption tracks                                 |
-| `selectTextTrack(id \| null)` | Select a track by id, or clear selection                          |
-| `setTextVisible(bool)`        | Show / hide the active text track                                 |
-| `isTextVisible()`             | Whether captions are currently visible                            |
-| `on(event, callback)`         | Subscribe to an event                                             |
-| `off(event, callback)`        | Unsubscribe                                                       |
-| `destroy()`                   | Tear down the player                                              |
-| `videoElement`                | The bound media element (readonly)                                |
+| Method                        | Description                                                                                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `attach(element)`             | Bind to a `<video>` or `<audio>` element and load the manifest                                                                                    |
+| `loadSource(config)`          | Load a new manifest without destroying the player. Resolves when the call finishes; **Shaka load failures are emitted via `'error'`, not thrown** |
+| `play()`                      | Start playback (returns a Promise; may reject on autoplay policy)                                                                                 |
+| `pause()`                     | Pause playback                                                                                                                                    |
+| `stop()`                      | Pause and seek to 0                                                                                                                               |
+| `seek(time)`                  | Seek to position in seconds                                                                                                                       |
+| `setVolume(0–1)`              | Set volume                                                                                                                                        |
+| `setMuted(bool)`              | Mute / unmute                                                                                                                                     |
+| `setPlaybackRate(rate)`       | Set speed (0.25 – 2)                                                                                                                              |
+| `toggleFullscreen()`          | Enter / exit fullscreen on the video container                                                                                                    |
+| `togglePip()`                 | Enter / exit picture-in-picture (video only)                                                                                                      |
+| `getPlaybackState()`          | Snapshot of current playback state                                                                                                                |
+| `getTextTracks()`             | Available subtitle/caption tracks                                                                                                                 |
+| `selectTextTrack(id \| null)` | Select a track by id, or clear selection                                                                                                          |
+| `setTextVisible(bool)`        | Show / hide the active text track                                                                                                                 |
+| `isTextVisible()`             | Whether captions are currently visible                                                                                                            |
+| `on(event, callback)`         | Subscribe to an event                                                                                                                             |
+| `off(event, callback)`        | Unsubscribe                                                                                                                                       |
+| `destroy()`                   | Tear down the player                                                                                                                              |
+| `videoElement`                | The bound media element (readonly)                                                                                                                |
 
 ---
 
@@ -298,6 +309,21 @@ abr: {
 | `mute`             | Mute toggled via `setMuted`             | `{ muted: boolean }`      |
 
 Queue, repeat, shuffle, cast, ad, and offline events are emitted by their respective manager classes (see below).
+
+### `MediaPlyrError`
+
+Every `'error'` event payload has this shape:
+
+```typescript
+interface MediaPlyrError {
+  code: number;
+  message: string;
+  severity: 'recoverable' | 'fatal';
+  detail?: unknown;
+}
+```
+
+Use `severity` — not individual codes — to decide whether to show a blocking error overlay. See [Error codes](#error-codes) for the full table.
 
 ### `PlaybackState`
 
@@ -349,13 +375,32 @@ Two approaches:
 ### Switching tracks
 
 ```typescript
-// Load a new track without recreating the player
+// Load failures surface on 'error', not as a rejected promise.
+const onLoadError = (data: unknown) => {
+  const err = data as MediaPlyrError;
+  if (err.severity === 'fatal') showFatalError(err.message);
+  player.off('error', onLoadError);
+  player.off('loaded', onLoadSuccess);
+};
+const onLoadSuccess = () => {
+  player.off('error', onLoadError);
+  player.off('loaded', onLoadSuccess);
+};
+player.on('error', onLoadError);
+player.on('loaded', onLoadSuccess);
+
 await player.loadSource({
   kind: 'audio',
   sources: [{ container: 'hls', url: nextTrackUrl }],
   title: nextTrack.title,
 });
 ```
+
+### Fatal errors and offline fallback
+
+When a stream fails to load (e.g. no network), **keep the `<video>` / `<audio>` element mounted**. Destroying or unmounting the element tears down the underlying Shaka player, which breaks offline playback via `loadSource()`.
+
+Show a fatal error overlay on top of the player instead of replacing it. The reference React components (`VideoPlayer`, `AudioPlayer`) follow this pattern — study them if you build a similar offline-download UI.
 
 ---
 
@@ -418,34 +463,78 @@ Cast is Chrome-only (not Edge). Pass `cast` in `MediaPlyrConfig` if you want the
 
 ### OfflineManager — download for offline playback
 
+Requires IndexedDB and a secure origin (HTTPS or localhost). Check support with `OfflineManager.isSupported()`.
+
+**Pass the live `MediaPlyr` instance** to the constructor so downloads reuse the same Shaka networking engine as playback. Without this, Shaka creates an isolated network stack whose CORS/config may differ, causing segments to fail silently during storage and playback errors (e.g. Shaka `9012` KEY_NOT_FOUND) when you try to play offline.
+
 ```typescript
 import { OfflineManager } from './media-plyr/integrations/OfflineManager.ts';
+import type { OfflineStoredAsset } from './media-plyr/types/index.ts';
 
 if (OfflineManager.isSupported()) {
+  // Construct after player.attach() resolves — player reference must be live.
   const offline = new OfflineManager(player);
 
   offline.on('offlineprogress', (data) => {
     const { progress } = data as { progress: number };
     updateDownloadBar(progress);
   });
+  offline.on('offlinestored', () => refreshStoredList());
+  offline.on('offlineremoved', () => refreshStoredList());
 
-  const asset = await offline.download('https://example.com/stream.mpd', {
+  const manifestUrl = 'https://example.com/stream.mpd';
+  const asset = await offline.download(manifestUrl, {
     mimeType: 'application/dash+xml',
-    appMetadata: { title: 'My Video' },
+    appMetadata: { title: 'My Video', kind: 'video' },
     onProgress: (p) => console.log(p),
   });
 
-  // Play back the downloaded asset:
+  // List everything stored locally:
+  const assets: OfflineStoredAsset[] = await offline.list();
+
+  // Match a stored asset back to an online source:
+  const saved = assets.find((a) => a.originalManifestUri === manifestUrl);
+
+  // Play back the downloaded asset (listen for 'error' — see Switching tracks):
+  const isHls =
+    asset.originalManifestUri.includes('.m3u8') ||
+    asset.originalManifestUri.includes('mpegurl');
   await player.loadSource({
     kind: 'video',
-    sources: [{ container: 'dash', url: asset.offlineUri }],
+    autoplay: true,
+    sources: [
+      {
+        container: isHls ? 'hls' : 'dash',
+        url: asset.offlineUri,
+      },
+    ],
     title: 'My Video (offline)',
   });
+
+  // Remove a download:
+  await offline.remove(asset.offlineUri);
 
   // on teardown:
   await offline.destroy();
 }
 ```
+
+#### `OfflineStoredAsset`
+
+Returned by `download()` and `list()`:
+
+```typescript
+interface OfflineStoredAsset {
+  offlineUri: string; // pass to player sources[].url
+  originalManifestUri: string; // online URL — use to match playlist entries
+  duration: number; // seconds
+  size: number; // bytes
+  isIncomplete: boolean; // true if download was interrupted
+  appMetadata: Record<string, unknown> | null;
+}
+```
+
+Skip playback when `isIncomplete` is true — delete and re-download instead. Storage/read failures during offline playback typically emit Shaka codes in the **9000 range** (e.g. `9012`); treat these as "delete and re-download" rather than retry.
 
 ### QueueManager — playlist navigation
 
@@ -513,17 +602,26 @@ muteBtn.addEventListener('click', () => muteMgr.toggle());
 
 ## Error codes
 
+Internal player errors use the **10000 range** so they never collide with Shaka's native codes (1000–9999).
+
 | Code  | Severity    | Meaning                                                  |
 | ----- | ----------- | -------------------------------------------------------- |
-| 1000  | fatal       | Browser not supported by Shaka                           |
-| 1001  | recoverable | Autoplay blocked — user interaction required             |
-| 1002  | fatal       | No sources provided                                      |
-| 1003  | fatal       | No HLS/DASH manifest (progressive files not supported)   |
-| 1100  | recoverable | A sidecar subtitle track failed to load                  |
+| 10000 | fatal       | Browser not supported by Shaka                           |
+| 10001 | recoverable | Autoplay blocked — user interaction required             |
+| 10002 | fatal       | No sources provided                                      |
+| 10003 | fatal       | No HLS/DASH manifest (progressive files not supported)   |
+| 10004 | recoverable | A sidecar subtitle track failed to load                  |
 | 9999  | fatal       | Unknown / unexpected error                               |
 | Other | varies      | Shaka error codes — check `severity` on the error object |
 
-Autoplay errors (1001) are recoverable — show a play button and call `player.play()` after user interaction.
+**Integrator guidance:**
+
+- Use **`error.severity`** to decide whether to show a fatal error UI (`'fatal'` vs `'recoverable'`). Do not special-case individual codes for overlay visibility.
+- Use **code ranges** to decide whether **Retry** makes sense:
+  - Shaka network: `code >= 1000 && code < 2000` (e.g. 1001 bad HTTP status, 1002 connection failure)
+  - HTML `MediaError`: `code === 2` (`MEDIA_ERR_NETWORK`) on `videoElement.error` if applicable
+- Autoplay blocked (**10001**) is recoverable — show a play button and call `player.play()` after user interaction; do not show a retry overlay.
+- Shaka **storage** errors (`code >= 9000`, e.g. `9012` KEY_NOT_FOUND) usually mean the offline asset is corrupt or incomplete — delete it with `OfflineManager.remove()` and re-download.
 
 ---
 
@@ -577,18 +675,53 @@ Your custom UI does not require this file.
 
 ## React demo (reference only)
 
-The repo includes a React + Vite demo in `src/`. It uses pre-built components:
+The repo includes a React + Vite demo in `src/`. It uses pre-built components and an `OfflinePanel` that wires `OfflineManager` to the player.
 
 ```tsx
+import { useState } from 'react';
 import { VideoPlayer } from '@media-plyr/components/VideoPlayer.tsx';
+import { AudioPlayer } from '@media-plyr/components/AudioPlayer.tsx';
+import type { MediaPlyrInstance, MediaTrack, OfflinePlayRequest } from '@media-plyr/types/index.ts';
+
+const [videoPlayer, setVideoPlayer] = useState<MediaPlyrInstance | null>(null);
+const [audioPlayer, setAudioPlayer] = useState<MediaPlyrInstance | null>(null);
+const [currentTrack, setCurrentTrack] = useState<MediaTrack>(tracks[0]);
+const [offlineRequest, setOfflineRequest] = useState<OfflinePlayRequest | null>(null);
 
 <VideoPlayer
   config={myConfig}
-  onReady={(player) => {
-    /* access imperative API */
+  onReady={setVideoPlayer}
+  onError={(error) => {
+    // Only fatal errors are forwarded (severity === 'fatal').
+    logFatal(error);
   }}
 />;
+
+<AudioPlayer
+  config={audioConfig}
+  playlist={tracks}
+  onReady={setAudioPlayer}
+  onTrackChange={setCurrentTrack}
+  offlinePlayRequest={offlineRequest}
+  onOfflinePlayComplete={() => setOfflineRequest(null)}
+/>;
+
+// Pass the player + current track config to your download UI (see src/OfflinePanel.tsx).
+<OfflinePanel player={videoPlayer} config={myConfig} />
+<OfflinePanel
+  player={audioPlayer}
+  config={trackToConfig(currentTrack)}
+  delegatePlayback
+  onPlay={(asset) =>
+    setOfflineRequest({
+      offlineUri: asset.offlineUri,
+      originalManifestUri: asset.originalManifestUri,
+    })
+  }
+/>;
 ```
+
+`onReady` fires after `attach()` — the player is usable even if the first manifest load failed. `offlinePlayRequest` lets a parent trigger offline playback through `AudioPlayer`'s queue: the player jumps to the matching playlist entry and swaps in the `offline:` URI while keeping artwork and title in sync. Manual queue navigation (next/prev/skip) clears the offline override.
 
 For custom UI in any framework (or no framework), use `MediaPlyr` directly as shown in the Quick Start above.
 

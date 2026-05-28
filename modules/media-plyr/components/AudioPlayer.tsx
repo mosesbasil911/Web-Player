@@ -21,9 +21,15 @@ import type {
   AudioPlayerProps,
   MediaPlyrConfig,
   MediaTrack,
+  OfflinePlayRequest,
   RepeatMode,
 } from '../types/index.ts';
 import '../styles/media-plyr.css';
+
+function offlineManifestContainer(uri: string): 'hls' | 'dash' {
+  const lower = uri.toLowerCase();
+  return lower.includes('.m3u8') || lower.includes('mpegurl') ? 'hls' : 'dash';
+}
 
 function buildConfigFromTrack(
   track: MediaTrack,
@@ -45,6 +51,9 @@ export function AudioPlayer({
   className,
   onReady,
   onError,
+  onTrackChange,
+  offlinePlayRequest,
+  onOfflinePlayComplete,
 }: AudioPlayerProps) {
   const tracks = useMemo<MediaTrack[]>(() => {
     if (playlist && playlist.length > 0) return playlist;
@@ -82,6 +91,13 @@ export function AudioPlayer({
   // the [queueState.currentIndex] effect so it knows NOT to clear the handoff.
   const crossfadeAdvancedRef = useRef(false);
 
+  // While set, the active queue track plays from `offlineUri` instead of its
+  // online manifest. Cleared when the user navigates the queue manually.
+  const [activeOfflinePlay, setActiveOfflinePlay] =
+    useState<OfflinePlayRequest | null>(null);
+  const applyingOfflinePlayRef = useRef(false);
+  const clearOfflinePlayRef = useRef<() => void>(() => {});
+
   const activeConfig = useMemo<MediaPlyrConfig>(() => {
     if (!currentTrack) return config;
     return buildConfigFromTrack(currentTrack, {
@@ -100,18 +116,45 @@ export function AudioPlayer({
   }, [currentTrack, config, queueState.currentIndex]);
 
   const memoryConfig = activeConfig.playbackMemory;
-  const mediaId = activeConfig.sources[0]?.url ?? activeConfig.title;
+  const mediaId =
+    activeOfflinePlay?.offlineUri ??
+    activeConfig.sources[0]?.url ??
+    activeConfig.title;
 
   const resolvedConfig = useMemo(() => {
     let next = activeConfig;
-    if (memoryConfig?.enabled) {
+
+    // Offline playback: swap the online manifest for the stored URI while
+    // keeping queue metadata (title, artwork) from the matched track.
+    if (
+      activeOfflinePlay &&
+      currentTrack?.sources.some(
+        (s) => s.url === activeOfflinePlay.originalManifestUri,
+      )
+    ) {
+      next = {
+        ...activeConfig,
+        sources: [
+          {
+            container: offlineManifestContainer(
+              activeOfflinePlay.originalManifestUri,
+            ),
+            url: activeOfflinePlay.offlineUri,
+          },
+        ],
+        autoplay: true,
+        startTime: 0,
+      };
+    }
+
+    if (memoryConfig?.enabled && !activeOfflinePlay) {
       const memory = new PlaybackMemory(memoryConfig);
       const saved = memory.getSavedPosition(mediaId);
       if (
         saved !== null &&
-        (activeConfig.startTime === undefined || activeConfig.startTime === 0)
+        (next.startTime === undefined || next.startTime === 0)
       ) {
-        next = { ...activeConfig, startTime: saved };
+        next = { ...next, startTime: saved };
       }
     }
     // Crossfade hand-off takes precedence over saved position so the new
@@ -120,7 +163,14 @@ export function AudioPlayer({
       next = { ...next, startTime: handoffStartTime };
     }
     return next;
-  }, [activeConfig, memoryConfig, mediaId, handoffStartTime]);
+  }, [
+    activeConfig,
+    activeOfflinePlay,
+    currentTrack,
+    memoryConfig,
+    mediaId,
+    handoffStartTime,
+  ]);
 
   const { ref, state, error, ready, player } = useMediaPlyr(resolvedConfig);
 
@@ -149,6 +199,36 @@ export function AudioPlayer({
     lyricsTrackKeyRef.current = key;
     if (!key) setLyricsOpen(false);
   }, [currentTrack]);
+
+  // Consume an offline play request from the parent: jump the queue to the
+  // matching track and route playback through the offline URI via resolvedConfig.
+  useEffect(() => {
+    if (!offlinePlayRequest) return;
+
+    const index = tracks.findIndex((track) =>
+      track.sources.some(
+        (s) => s.url === offlinePlayRequest.originalManifestUri,
+      ),
+    );
+
+    applyingOfflinePlayRef.current = true;
+    if (index >= 0) {
+      queue.skipTo(index);
+    }
+    setActiveOfflinePlay(offlinePlayRequest);
+    onOfflinePlayComplete?.();
+  }, [offlinePlayRequest, tracks, queue, onOfflinePlayComplete]);
+
+  // Drop offline mode when the user navigates the queue themselves.
+  useEffect(() => {
+    if (applyingOfflinePlayRef.current) {
+      applyingOfflinePlayRef.current = false;
+      return;
+    }
+    setActiveOfflinePlay(null);
+  }, [queueState.currentIndex]);
+
+  clearOfflinePlayRef.current = () => setActiveOfflinePlay(null);
 
   useEffect(() => {
     if (!memoryConfig?.enabled || !player?.videoElement) return;
@@ -216,9 +296,15 @@ export function AudioPlayer({
     const session = new MediaSessionManager(player, {
       onPrev: () => {
         if (stateRef.current.currentTime > 3) player.seek(0);
-        else queueRef.current.prev();
+        else {
+          clearOfflinePlayRef.current();
+          queueRef.current.prev();
+        }
       },
-      onNext: () => queueRef.current.next(),
+      onNext: () => {
+        clearOfflinePlayRef.current();
+        queueRef.current.next();
+      },
     });
     sessionRef.current = session;
     if (!session.isSupported()) return;
@@ -305,11 +391,12 @@ export function AudioPlayer({
 
   // Pre-buffer the next track once the current one has loaded.
   useEffect(() => {
+    if (activeOfflinePlay) return;
     if (!crossfadeEnabled || !ready || !nextConfig) return;
     const engine = engineRef.current;
     if (!engine) return;
     engine.prebuffer(nextConfig);
-  }, [crossfadeEnabled, ready, nextConfig]);
+  }, [activeOfflinePlay, crossfadeEnabled, ready, nextConfig]);
 
   // Watch the playhead. When the remaining time falls inside the crossfade
   // window, kick off the overlap.
@@ -393,13 +480,27 @@ export function AudioPlayer({
     state.volume,
   ]);
 
+  // Fire as soon as the player instance is created — not only when the first
+  // manifest finishes loading — so the parent's ref is valid even when the
+  // initial network fetch fails (e.g. offline on first load).
   useEffect(() => {
-    if (ready && player && onReady) onReady(player);
-  }, [ready, player, onReady]);
+    if (player && onReady) onReady(player);
+  }, [player, onReady]);
+
+  // Notify the parent whenever the active queue track changes so it can keep
+  // its own derived state (e.g. which config to show in the offline panel) in
+  // sync without needing to reach into the AudioPlayer's internal queue.
+  useEffect(() => {
+    if (currentTrack && onTrackChange) onTrackChange(currentTrack);
+  }, [currentTrack, onTrackChange]);
 
   useEffect(() => {
-    if (error && error.code !== 1001 && onError) {
-      onError({ code: error.code, message: error.message, severity: 'fatal' });
+    if (error?.severity === 'fatal' && onError) {
+      onError({
+        code: error.code,
+        message: error.message,
+        severity: error.severity,
+      });
     }
   }, [error, onError]);
 
@@ -408,10 +509,14 @@ export function AudioPlayer({
     if (player && state.currentTime > 3) {
       player.seek(0);
     } else {
+      clearOfflinePlayRef.current();
       queue.prev();
     }
   }, [player, state.currentTime, queue]);
-  const handleNext = useCallback(() => queue.next(), [queue]);
+  const handleNext = useCallback(() => {
+    clearOfflinePlayRef.current();
+    queue.next();
+  }, [queue]);
   const handleRepeatChange = useCallback(
     (mode: RepeatMode) => queue.setRepeat(mode),
     [queue],
@@ -421,28 +526,14 @@ export function AudioPlayer({
     [queue],
   );
   const handleSkipTo = useCallback(
-    (index: number) => queue.skipTo(index),
+    (index: number) => {
+      clearOfflinePlayRef.current();
+      queue.skipTo(index);
+    },
     [queue],
   );
 
-  const hasFatalError = error && error.code !== 1001;
-
-  if (hasFatalError) {
-    return (
-      <div
-        className={`media-plyr media-plyr--audio media-plyr--error ${className ?? ''}`}
-      >
-        <ErrorOverlay
-          error={{
-            code: error.code,
-            message: error.message,
-            severity: 'fatal',
-          }}
-          onRetry={handleRetry}
-        />
-      </div>
-    );
-  }
+  const hasFatalError = error?.severity === 'fatal';
 
   const artwork =
     currentTrack?.artwork ?? currentTrack?.poster ?? activeConfig.poster;
@@ -450,6 +541,9 @@ export function AudioPlayer({
   const artist = currentTrack?.artist;
   const isPlaylist = tracks.length > 1;
 
+  // Keep the <audio> element mounted even when there is a fatal error.
+  // Unmounting it destroys the Shaka player, which breaks offline playback
+  // triggered from the OfflinePanel via player.loadSource().
   return (
     <div className={`media-plyr media-plyr--audio ${className ?? ''}`}>
       <audio
@@ -460,6 +554,17 @@ export function AudioPlayer({
       />
 
       <div className="media-plyr-audio">
+        {hasFatalError && (
+          <ErrorOverlay
+            error={{
+              code: error.code,
+              message: error.message,
+              severity: error.severity,
+            }}
+            onRetry={handleRetry}
+          />
+        )}
+
         {/* Track Info Row */}
         <div className="media-plyr-audio__info">
           {artwork && (
@@ -630,7 +735,7 @@ export function AudioPlayer({
         />
 
         {/* Loading indicator */}
-        {!ready && (
+        {!ready && !hasFatalError && (
           <div className="media-plyr-audio__loading">
             <div className="media-plyr__spinner" />
           </div>

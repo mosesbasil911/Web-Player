@@ -220,12 +220,32 @@ export interface VideoPlayerProps {
   hasNext?: boolean;
 }
 
+export interface OfflinePlayRequest {
+  offlineUri: string;
+  originalManifestUri: string;
+  title?: string;
+}
+
 export interface AudioPlayerProps {
   config: MediaPlyrConfig;
   playlist?: MediaTrack[];
   className?: string;
   onReady?: (player: MediaPlyrInstance) => void;
   onError?: (error: MediaPlyrError) => void;
+  /**
+   * Called whenever the active queue track changes (including on first mount).
+   * Allows the parent to keep its own copy of the currently-playing track so
+   * it can pass accurate metadata (e.g. download config) to other components.
+   */
+  onTrackChange?: (track: MediaTrack) => void;
+  /**
+   * When set, AudioPlayer syncs the queue to the matching playlist track and
+   * loads the offline URI through its normal config pipeline so the queue
+   * highlight, artwork, and title all stay in sync.
+   */
+  offlinePlayRequest?: OfflinePlayRequest | null;
+  /** Called after `offlinePlayRequest` has been consumed. */
+  onOfflinePlayComplete?: () => void;
 }
 
 export interface MediaPlyrError {
