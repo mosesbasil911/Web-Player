@@ -59,18 +59,22 @@ export function VideoPlayer({
     return () => memory.detach();
   }, [player, memoryConfig, mediaId]);
 
+  // Fire as soon as the player instance is created (attach resolved), not only
+  // when the first manifest finishes loading. This ensures the parent holds a
+  // live player reference even when the initial load fails (e.g. no network)
+  // so the OfflinePanel's Play buttons stay enabled.
   useEffect(() => {
-    if (ready && player && onReady) {
+    if (player && onReady) {
       onReady(player);
     }
-  }, [ready, player, onReady]);
+  }, [player, onReady]);
 
   useEffect(() => {
-    if (error && error.code !== 1001 && onError) {
+    if (error?.severity === 'fatal' && onError) {
       onError({
         code: error.code,
         message: error.message,
-        severity: 'fatal',
+        severity: error.severity,
       });
     }
   }, [error, onError]);
@@ -79,24 +83,13 @@ export function VideoPlayer({
     window.location.reload();
   }, []);
 
-  const hasFatalError = error && error.code !== 1001;
+  const hasFatalError = error?.severity === 'fatal';
   const isBuffering = ready && state.waiting && !state.paused && !state.ended;
 
-  if (hasFatalError) {
-    return (
-      <div className={`media-plyr media-plyr--error ${className ?? ''}`}>
-        <ErrorOverlay
-          error={{
-            code: error.code,
-            message: error.message,
-            severity: 'fatal',
-          }}
-          onRetry={handleRetry}
-        />
-      </div>
-    );
-  }
-
+  // Keep the <video> element mounted even when there is a fatal error.
+  // Unmounting it would destroy the underlying Shaka player, nulling out
+  // the player reference that the OfflinePanel needs to trigger offline
+  // playback. Instead, render the error overlay on top of the video layer.
   return (
     <div className={`media-plyr media-plyr--video ${className ?? ''}`}>
       <div className="media-plyr__container">
@@ -110,13 +103,24 @@ export function VideoPlayer({
           aria-label={config.title}
         />
 
-        {!ready && (
+        {!ready && !hasFatalError && (
           <div className="media-plyr__loading-overlay">
             <div className="media-plyr__spinner" />
           </div>
         )}
 
         <BufferingOverlay visible={isBuffering} />
+
+        {hasFatalError && (
+          <ErrorOverlay
+            error={{
+              code: error.code,
+              message: error.message,
+              severity: error.severity,
+            }}
+            onRetry={handleRetry}
+          />
+        )}
 
         <ControlBar
           player={player}

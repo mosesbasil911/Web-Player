@@ -59,7 +59,9 @@ export class MediaPlyr implements MediaPlyrInstance {
 
     if (this.config.sources.length === 0) {
       this.handleError({
-        code: 1002,
+        // Use 10002 (not 1002) to avoid colliding with Shaka's
+        // NETWORK_HTTP_ERROR (1002) which would be mis-labelled in the UI.
+        code: 10002,
         message: 'No sources provided',
         severity: 'fatal',
       });
@@ -68,7 +70,7 @@ export class MediaPlyr implements MediaPlyrInstance {
 
     if (!this.isShakaSupported()) {
       this.handleError({
-        code: 1000,
+        code: 10000,
         message: 'This browser is not supported. Please use a modern version of Chrome, Edge, Firefox, or Safari.',
         severity: 'fatal',
       });
@@ -78,7 +80,7 @@ export class MediaPlyr implements MediaPlyrInstance {
     const manifest = this.pickManifest();
     if (!manifest) {
       this.handleError({
-        code: 1003,
+        code: 10003,
         message: 'No HLS or DASH manifest provided. Progressive sources (mp4, webm, mp3) are not supported.',
         severity: 'fatal',
       });
@@ -116,7 +118,7 @@ export class MediaPlyr implements MediaPlyrInstance {
     const manifest = this.pickManifest();
     if (!manifest) {
       this.handleError({
-        code: 1003,
+        code: 10003,
         message: 'No HLS or DASH manifest provided.',
         severity: 'fatal',
       });
@@ -149,7 +151,7 @@ export class MediaPlyr implements MediaPlyrInstance {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
         this.handleError({
-          code: 1001,
+          code: 10001,
           message: 'Autoplay blocked by browser. User interaction required.',
           severity: 'recoverable',
           detail: err,
@@ -602,7 +604,7 @@ export class MediaPlyr implements MediaPlyrInstance {
           // Don't tear down playback for a single bad VTT — surface it as
           // a recoverable error and continue.
           this.handleError({
-            code: 1100,
+            code: 10004,
             message: `Failed to load subtitle "${sub.label}" (${sub.language})`,
             severity: 'recoverable',
             detail: err,

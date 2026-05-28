@@ -1,12 +1,16 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { VideoPlayer } from '@media-plyr/index.ts';
 import { AudioPlayer } from '@media-plyr/components/AudioPlayer.tsx';
 import { useGlobalMute } from '@media-plyr/hooks/useGlobalMute.ts';
 import type {
   MediaPlyrConfig,
+  MediaPlyrInstance,
   MediaSource,
   MediaTrack,
+  OfflinePlayRequest,
+  OfflineStoredAsset,
 } from '@media-plyr/types/index.ts';
+import { OfflinePanel } from './OfflinePanel.tsx';
 import './App.css';
 
 interface DemoSource {
@@ -179,7 +183,47 @@ function App() {
   const [customUrl, setCustomUrl] = useState('');
   const [customUrlError, setCustomUrlError] = useState<string | null>(null);
   const [crossfadeMs, setCrossfadeMs] = useState<number>(4000);
+  const [videoPlayer, setVideoPlayer] = useState<MediaPlyrInstance | null>(
+    null,
+  );
+  const [audioPlayer, setAudioPlayer] = useState<MediaPlyrInstance | null>(
+    null,
+  );
+  // Tracks whichever playlist entry AudioPlayer is currently showing so the
+  // OfflinePanel always targets the right track for download.
+  const [currentAudioTrack, setCurrentAudioTrack] = useState<MediaTrack>(
+    AUDIO_PLAYLIST[0],
+  );
+  const [audioOfflinePlayRequest, setAudioOfflinePlayRequest] =
+    useState<OfflinePlayRequest | null>(null);
   const { muted: globalMuted, toggle: toggleGlobalMute } = useGlobalMute();
+
+  const handleVideoReady = useCallback((player: MediaPlyrInstance) => {
+    setVideoPlayer(player);
+  }, []);
+
+  const handleAudioReady = useCallback((player: MediaPlyrInstance) => {
+    setAudioPlayer(player);
+  }, []);
+
+  // Called by AudioPlayer each time the active queue track changes. Keeps
+  // currentAudioTrack in sync and clears any offline override so the UI
+  // reflects the queue's real position again.
+  const handleAudioTrackChange = useCallback((track: MediaTrack) => {
+    setCurrentAudioTrack(track);
+  }, []);
+
+  const handleAudioOfflinePlay = useCallback((asset: OfflineStoredAsset) => {
+    setAudioOfflinePlayRequest({
+      offlineUri: asset.offlineUri,
+      originalManifestUri: asset.originalManifestUri,
+      title: (asset.appMetadata?.title as string | undefined) ?? undefined,
+    });
+  }, []);
+
+  const handleAudioOfflinePlayComplete = useCallback(() => {
+    setAudioOfflinePlayRequest(null);
+  }, []);
 
   const audioConfig = useMemo<MediaPlyrConfig>(
     () => ({
@@ -190,6 +234,19 @@ function App() {
           : { enabled: false },
     }),
     [crossfadeMs],
+  );
+
+  // Config for the OfflinePanel that always reflects whichever track is
+  // currently active in AudioPlayer (updated via onTrackChange).
+  const currentAudioOfflineConfig = useMemo<MediaPlyrConfig>(
+    () => ({
+      kind: 'audio',
+      sources: currentAudioTrack.sources,
+      title: currentAudioTrack.title,
+      poster: currentAudioTrack.poster ?? currentAudioTrack.artwork,
+      autoplay: false,
+    }),
+    [currentAudioTrack],
   );
 
   const activeConfig: MediaPlyrConfig | null = useMemo(() => {
@@ -331,12 +388,17 @@ function App() {
                     .map((source) => source.url)
                     .join('|')}
                   config={activeConfig}
+                  onReady={handleVideoReady}
                 />
               ) : (
                 <div className="empty-state">
                   Enter an HLS or DASH manifest URL above to start playback
                 </div>
               )}
+            </section>
+
+            <section className="demo-section">
+              <OfflinePanel player={videoPlayer} config={activeConfig} />
             </section>
           </>
         )}
@@ -364,7 +426,23 @@ function App() {
             </div>
 
             <section className="demo-section">
-              <AudioPlayer config={audioConfig} playlist={AUDIO_PLAYLIST} />
+              <AudioPlayer
+                config={audioConfig}
+                playlist={AUDIO_PLAYLIST}
+                onReady={handleAudioReady}
+                onTrackChange={handleAudioTrackChange}
+                offlinePlayRequest={audioOfflinePlayRequest}
+                onOfflinePlayComplete={handleAudioOfflinePlayComplete}
+              />
+            </section>
+
+            <section className="demo-section">
+              <OfflinePanel
+                player={audioPlayer}
+                config={currentAudioOfflineConfig}
+                delegatePlayback
+                onPlay={handleAudioOfflinePlay}
+              />
             </section>
           </>
         )}

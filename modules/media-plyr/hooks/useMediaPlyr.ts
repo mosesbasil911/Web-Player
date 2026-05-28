@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { MediaPlyr } from '../core/MediaPlyr.ts';
-import type { MediaPlyrConfig, PlaybackState, MediaPlyrInstance } from '../types/index.ts';
+import type { MediaPlyrConfig, MediaPlyrError, PlaybackState, MediaPlyrInstance } from '../types/index.ts';
 
 const DEFAULT_STATE: PlaybackState = {
   playing: false,
@@ -24,7 +24,7 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
   const playerRef = useRef<MediaPlyr | null>(null);
   const [mediaElement, setMediaElement] = useState<HTMLVideoElement | HTMLAudioElement | null>(null);
   const [state, setState] = useState<PlaybackState>(DEFAULT_STATE);
-  const [error, setError] = useState<{ code: number; message: string } | null>(null);
+  const [error, setError] = useState<MediaPlyrError | null>(null);
   const [ready, setReady] = useState(false);
   const [instance, setInstance] = useState<MediaPlyrInstance | null>(null);
 
@@ -60,7 +60,7 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
       setReady(true);
     });
     plyr.on('error', (data) => {
-      const err = data as { code: number; message: string };
+      const err = data as MediaPlyrError;
       setError(err);
     });
 
