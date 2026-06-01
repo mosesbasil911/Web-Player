@@ -75,6 +75,26 @@ const DEMO_SOURCES: DemoSource[] = [
       cast: CAST_CONFIG,
     },
   },
+  {
+    label: 'Angel One — Widevine DRM (DASH)',
+    config: {
+      kind: 'video',
+      sources: [
+        {
+          container: 'dash',
+          url: 'https://storage.googleapis.com/shaka-demo-assets/angel-one-widevine/dash.mpd',
+        },
+      ],
+      title: 'Angel One — Widevine DRM (Shaka test proxy)',
+      autoplay: false,
+      cast: CAST_CONFIG,
+      drm: {
+        servers: {
+          'com.widevine.alpha': 'https://cwip-shaka-proxy.appspot.com/no_auth',
+        },
+      },
+    },
+  },
 ];
 
 const AUDIO_PLAYLIST: MediaTrack[] = [
