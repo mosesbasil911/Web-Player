@@ -57,8 +57,32 @@ export interface LyricsTrack {
 }
 
 export interface DrmConfig {
+  /**
+   * License server URL per key system, e.g.
+   * `{ 'com.widevine.alpha': 'https://license…' }`. Keyed by Shaka's DRM
+   * key-system identifiers (`com.widevine.alpha`, `com.microsoft.playready`,
+   * `com.apple.fps`).
+   */
   servers: Record<string, string>;
+  /**
+   * Advanced per-key-system options passed straight through to Shaka
+   * (`shaka.extern.AdvancedDrmConfiguration`) — robustness levels,
+   * `serverCertificate`, `persistentStateRequired`, etc.
+   */
   advanced?: Record<string, Record<string, unknown>>;
+  /**
+   * Extra HTTP headers attached to outgoing license requests. Use for
+   * authorization tokens the license server requires (e.g.
+   * `{ Authorization: 'Bearer …' }`). Applied via a Shaka networking-engine
+   * request filter, so it works regardless of key system.
+   */
+  licenseRequestHeaders?: Record<string, string>;
+  /**
+   * Send credentials (cookies, HTTP auth) with cross-origin license
+   * requests. Maps to the license request's
+   * `allowCrossSiteCredentials`. Defaults to `false`.
+   */
+  withCredentials?: boolean;
 }
 
 export interface AdsConfig {

@@ -30,7 +30,7 @@ pnpm add shaka-player
 | Path                    | Required? | Purpose                                                                                         |
 | ----------------------- | --------- | ----------------------------------------------------------------------------------------------- |
 | `core/`                 | **Yes**   | `MediaPlyr` engine, queue, playback memory, crossfade                                           |
-| `integrations/`         | Optional  | Cast, offline downloads, OS media session                                                       |
+| `integrations/`         | Optional  | DRM, Cast, offline downloads, OS media session                                                  |
 | `utils/`                | **Yes**   | Helpers (`formatTime`, `mapRawMediaToSources`, etc.)                                            |
 | `types/`                | **Yes**   | TypeScript definitions                                                                          |
 | `styles/media-plyr.css` | Optional  | Caption styling + reference UI tokens (only needed if you use Shaka's built-in caption overlay) |
@@ -233,11 +233,32 @@ For caption visibility, call `player.setTextVisible(true)` and `player.selectTex
 
 ### DRM
 
+DRM is a config passthrough to Shaka — you supply license server URLs (and
+optionally auth headers); Shaka performs the EME/CDM handshake. The
+`DrmManager` (`integrations/DrmManager.ts`) owns this; the core applies it
+automatically before every `player.load()`, so per-track DRM works in
+protected playlists.
+
 ```typescript
 drm: {
   servers: {
     'com.widevine.alpha': 'https://license.example.com/widevine',
     'com.microsoft.playready': 'https://license.example.com/playready',
+  },
+  // Optional: auth token attached to every license request (Widevine,
+  // PlayReady, FairPlay alike) via a Shaka networking-engine request filter.
+  licenseRequestHeaders: {
+    Authorization: 'Bearer <token>',
+  },
+  // Optional: send cookies / HTTP auth on cross-origin license requests.
+  withCredentials: true,
+  // Optional: advanced per-key-system options (robustness, serverCertificate,
+  // persistentStateRequired) passed straight to Shaka.
+  advanced: {
+    'com.widevine.alpha': {
+      videoRobustness: 'HW_SECURE_ALL',
+      audioRobustness: 'HW_SECURE_CRYPTO',
+    },
   },
 }
 ```

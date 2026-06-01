@@ -15,6 +15,7 @@ export type {
 } from './integrations/MediaSessionManager.ts';
 export { OfflineManager } from './integrations/OfflineManager.ts';
 export { CastManager } from './integrations/CastManager.ts';
+export { DrmManager } from './integrations/DrmManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';

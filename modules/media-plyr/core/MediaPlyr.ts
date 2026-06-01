@@ -1,5 +1,6 @@
 import shaka from 'shaka-player';
 import { EventEmitter } from './EventEmitter.ts';
+import { DrmManager } from '../integrations/DrmManager.ts';
 import { orderSources } from '../utils/orderSources.ts';
 import type {
   MediaPlyrConfig,
@@ -126,6 +127,9 @@ export class MediaPlyr implements MediaPlyrInstance {
     }
 
     try {
+      // Re-apply DRM in case this source uses a different key system /
+      // license server (e.g. switching tracks in a protected playlist).
+      this.configureDrm();
       await this.player.load(manifest.url, config.startTime);
       if (this.destroyed) return;
       await this.applySubtitleTracks();
@@ -309,6 +313,9 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.emitter.emit('destroy');
     this.emitter.removeAllListeners();
 
+    this.drmManager?.destroy();
+    this.drmManager = null;
+
     if (this.player) {
       this.player.destroy();
       this.player = null;
@@ -327,15 +334,14 @@ export class MediaPlyr implements MediaPlyrInstance {
 
   // --- Private ---
 
+  private drmManager: DrmManager | null = null;
+
   private configureDrm(): void {
     if (!this.player || !this.config.drm) return;
 
-    this.player.configure({
-      drm: {
-        servers: this.config.drm.servers,
-        advanced: this.config.drm.advanced as Record<string, shaka.extern.AdvancedDrmConfiguration>,
-      },
-    });
+    this.drmManager?.destroy();
+    this.drmManager = new DrmManager(this.player, this.config.drm);
+    this.drmManager.apply();
   }
 
   /**
