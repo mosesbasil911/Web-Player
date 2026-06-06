@@ -551,6 +551,88 @@
   background: var(--plyr-accent-hover);
 }
 
+/* ---- Ads (Google IMA) ---- */
+.media-plyr__ad {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* Only intercept pointer events while an ad is actually on screen, so the
+   container never blocks clicks on the content controls between breaks. */
+.media-plyr__ad--active {
+  pointer-events: auto;
+}
+
+/* IMA paints its own ad UI (clickthrough, skip button, "Why this ad?") into
+   this node. It must fill the player and sit above the video. */
+.media-plyr__ad-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.media-plyr__ad-container > * {
+  width: 100%;
+  height: 100%;
+}
+
+/* Small "Ad · time · Skip in Ns" status chip layered above IMA's own UI.
+   IMA renders the real skip button itself; this is purely informational. */
+.media-plyr__ad-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.75);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--plyr-text);
+  pointer-events: none;
+  z-index: 16;
+}
+
+.media-plyr__ad-badge-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffd54a;
+}
+
+.media-plyr__ad-badge-time {
+  color: var(--plyr-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.media-plyr__ad-badge-skip {
+  color: var(--plyr-text-secondary);
+}
+
+/* Audio player: the ad container overlays the audio surface. There is no
+   video frame, so give it a minimum tappable area for clickthrough/companion
+   creatives and round it to match the audio shell. */
+.media-plyr-audio .media-plyr__ad {
+  border-radius: var(--plyr-border-radius);
+  overflow: hidden;
+  /* IMA needs a non-zero slot; guarantee tappable area for audio ads. */
+  min-height: 120px;
+}
+
+.media-plyr-audio[data-ad-active='true'] .media-plyr__ad {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.media-plyr-audio .media-plyr__ad-badge {
+  top: 16px;
+  bottom: auto;
+}
+
 /* ---- Cast Button ---- */
 .media-plyr__btn--cast-connecting {
   animation: media-plyr-cast-pulse 1.5s ease-in-out infinite;

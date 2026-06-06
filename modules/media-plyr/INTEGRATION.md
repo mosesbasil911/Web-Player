@@ -263,6 +263,57 @@ drm: {
 }
 ```
 
+### Ads (Google IMA)
+
+Ads are a config passthrough to Google's IMA SDK — you supply a VAST or VMAP
+tag URL; IMA fetches and renders the creatives. The `AdsManager`
+(`integrations/AdsManager.ts`) owns the IMA lifecycle and is **decoupled from
+Shaka**: it talks only to the bound media element and an ad container `<div>`,
+so it works identically for video and audio.
+
+The IMA SDK is loaded at runtime via a `<script>` tag (no npm dependency),
+exactly like the Cast SDK.
+
+```typescript
+ads: {
+  // A single VAST tag plays as a pre-roll. A VMAP response schedules its own
+  // pre/mid/post breaks — IMA plays them automatically.
+  tagUrl: 'https://pubads.g.doubleclick.net/gampad/ads?...&output=vmap',
+
+  // Optional: IMA UI locale (skip button, countdown). Defaults to browser locale.
+  locale: 'en',
+
+  // Optional: don't intercept the first play for a pre-roll. Use when you only
+  // want manual `adBreaks` scheduling.
+  disablePreloadOnPlay: false,
+
+  // Optional: manual break schedule for ad servers that return single VAST tags
+  // (not VMAP). Each break is requested at its own time.
+  adBreaks: [
+    { type: 'pre-roll', tagUrl: 'https://…/preroll.xml' },
+    { type: 'mid-roll', offsetSeconds: 30, tagUrl: 'https://…/midroll.xml' },
+    { type: 'post-roll', tagUrl: 'https://…/postroll.xml' },
+  ],
+}
+```
+
+**Pre-roll timing:** IMA's ad display container must be initialized inside a
+user gesture (mobile autoplay policy). The manager intercepts the content
+element's **first `play`**, pauses content, initializes the container in that
+gesture, plays the pre-roll, and resumes content when the break completes.
+
+**Per-track audio ads:** for playlists, set `adsConfig` on individual
+`MediaTrack` entries — `AudioPlayer` prefers the track's `adsConfig` and falls
+back to the player-level `ads`. Ads are suppressed during offline playback.
+
+In the React components, ads are wired automatically: pass `ads` in
+`MediaPlyrConfig` (video) or `adsConfig` on a `MediaTrack` (audio playlist).
+The `<AdOverlay>` renders the IMA container and an "Ad · countdown · skip-in"
+status badge, and content controls hide while a linear ad plays.
+
+To wire ads into a custom (non-React) UI, use `AdsManager` directly — see
+[AdsManager](#adsmanager--google-ima-ads) below.
+
 ### Streaming / ABR
 
 ```typescript
@@ -330,6 +381,20 @@ abr: {
 | `mute`             | Mute toggled via `setMuted`             | `{ muted: boolean }`      |
 
 Queue, repeat, shuffle, cast, ad, and offline events are emitted by their respective manager classes (see below).
+
+### Ad events (`AdsManager`)
+
+Emitted by `AdsManager`, not the core player. Subscribe via `adsMgr.on(...)`.
+
+| Event          | When it fires                       | Payload           |
+| -------------- | ----------------------------------- | ----------------- |
+| `adbreakstart` | An ad break begins (content pauses) | `{ adBreakType }` |
+| `adstart`      | An individual ad starts             | `AdInfo`          |
+| `adprogress`   | ~4×/sec while an ad plays           | `AdProgressEvent` |
+| `adend`        | An ad finishes playing              | `{ adBreakType }` |
+| `adskip`       | An ad was skipped by the user       | `{ adBreakType }` |
+| `adbreakend`   | An ad break ends (content resumes)  | `{ adBreakType }` |
+| `aderror`      | An ad failed (content continues)    | `AdErrorEvent`    |
 
 ### `MediaPlyrError`
 
@@ -481,6 +546,52 @@ if (CastManager.isSupported()) {
 ```
 
 Cast is Chrome-only (not Edge). Pass `cast` in `MediaPlyrConfig` if you want the config available to the manager, but Cast is wired separately via `CastManager`.
+
+### AdsManager — Google IMA ads
+
+Loads the IMA SDK and plays VAST/VMAP ads against the bound media element. Give
+it the player, the ad config, and a container `<div>` to render the ad UI into.
+Decoupled from Shaka — works for both video and audio.
+
+```typescript
+import { AdsManager } from './media-plyr/integrations/AdsManager.ts';
+import type { AdInfo, AdProgressEvent } from './media-plyr/types/index.ts';
+
+const adContainer = document.querySelector('.ad-container') as HTMLElement;
+
+const adsMgr = new AdsManager(
+  player,
+  { tagUrl: 'https://…&output=vmap' },
+  adContainer,
+);
+
+adsMgr.on('adstart', (data) => {
+  const ad = data as AdInfo;
+  showAdBadge(ad); // ad.skippable, ad.podPosition, ad.podCount, …
+});
+adsMgr.on('adprogress', (data) => {
+  const p = data as AdProgressEvent;
+  updateCountdown(p.duration - p.currentTime, p.skipTimeRemaining);
+});
+adsMgr.on('adend', hideAdBadge);
+adsMgr.on('adskip', hideAdBadge);
+adsMgr.on('aderror', hideAdBadge); // content keeps playing on ad errors
+
+await adsMgr.init(); // loads the IMA SDK + builds loader/container
+adsMgr.attachAutoPreroll(); // intercept first play for a pre-roll (optional)
+
+// on teardown:
+adsMgr.destroy();
+```
+
+IMA renders the real skip button, clickthrough, and "Why this ad?" UI into the
+container itself — your overlay only needs to add informational chrome (an "Ad"
+label, a countdown). Call `adsMgr.resize()` after layout/fullscreen changes if
+you are not using the React `<AdOverlay>` (which handles this for you).
+
+The container `<div>` must overlay the media element and sit above it
+(`position: absolute; inset: 0; z-index: …`). See `styles/media-plyr.css`
+(`.media-plyr__ad-container`) for a reference.
 
 ### OfflineManager — download for offline playback
 
