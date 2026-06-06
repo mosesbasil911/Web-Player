@@ -22,6 +22,15 @@ const CAST_CONFIG = {
   receiverApplicationId: 'CC1AD845',
 };
 
+// Google's public IMA sample ad tags (https://developers.google.com/ima).
+// VMAP schedules pre-roll, mid-roll, and post-roll in a single response.
+const SAMPLE_VMAP_TAG =
+  'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples&sz=640x480&cust_params=sample_ar%3Dpremidpost&ciu_szs=300x250&gdfp_req=1&ad_rule=1&output=vmap&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue&correlator=';
+// NOTE: `single_ad_samples` + `sample_ct=skippablelinear` currently returns an
+// empty VAST (no <Ad>). Use Google's dedicated skippable pre-roll inventory.
+const SAMPLE_SKIPPABLE_PREROLL_TAG =
+  'https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=';
+
 const DEMO_SOURCES: DemoSource[] = [
   {
     label: 'Mux HLS Test Stream',
@@ -95,6 +104,46 @@ const DEMO_SOURCES: DemoSource[] = [
       },
     },
   },
+  {
+    label: 'Sintel — Ads (VMAP pre/mid/post)',
+    config: {
+      kind: 'video',
+      sources: [
+        {
+          container: 'hls',
+          url: 'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8',
+        },
+        {
+          container: 'dash',
+          url: 'https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd',
+        },
+      ],
+      title: 'Sintel — IMA VMAP (pre-roll, mid-roll, post-roll)',
+      autoplay: false,
+      cast: CAST_CONFIG,
+      ads: {
+        tagUrl: SAMPLE_VMAP_TAG,
+      },
+    },
+  },
+  {
+    label: 'Mux HLS — Skippable pre-roll',
+    config: {
+      kind: 'video',
+      sources: [
+        {
+          container: 'hls',
+          url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8',
+        },
+      ],
+      title: 'Mux HLS — IMA skippable pre-roll',
+      autoplay: false,
+      cast: CAST_CONFIG,
+      ads: {
+        tagUrl: SAMPLE_SKIPPABLE_PREROLL_TAG,
+      },
+    },
+  },
 ];
 
 const AUDIO_PLAYLIST: MediaTrack[] = [
@@ -123,6 +172,10 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     artist: 'agerabeatz',
     artwork:
       'https://t4.ftcdn.net/jpg/03/22/01/93/360_F_322019328_tpDuVYkRn16v58rWHjCjvS10yBoGuBIe.jpg',
+    // Per-track audio ad: a skippable pre-roll plays before this track.
+    adsConfig: {
+      tagUrl: SAMPLE_SKIPPABLE_PREROLL_TAG,
+    },
   },
   {
     kind: 'audio',
@@ -404,9 +457,9 @@ function App() {
             <section className="demo-section">
               {activeConfig ? (
                 <VideoPlayer
-                  key={activeConfig.sources
+                  key={`${activeConfig.sources
                     .map((source) => source.url)
-                    .join('|')}
+                    .join('|')}|${activeConfig.ads?.tagUrl ?? ''}`}
                   config={activeConfig}
                   onReady={handleVideoReady}
                 />

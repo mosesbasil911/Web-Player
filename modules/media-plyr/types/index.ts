@@ -86,14 +86,76 @@ export interface DrmConfig {
 }
 
 export interface AdsConfig {
+  /**
+   * VAST or VMAP ad tag URL. A VMAP response schedules its own pre/mid/post
+   * breaks (Google IMA plays them automatically). A single VAST tag plays as
+   * a pre-roll unless overridden by `adBreaks`.
+   */
   tagUrl: string;
+  /**
+   * Manual ad-break schedule. When provided, each break is requested at its
+   * own time (pre-roll on first play, mid-roll at `offsetSeconds`, post-roll
+   * when content ends) using its own `tagUrl`, overriding the single-tag
+   * behaviour above. Use this when your ad server returns single VAST tags
+   * rather than a VMAP playlist.
+   */
   adBreaks?: AdBreak[];
+  /**
+   * Locale for the IMA SDK UI (skip button, countdown, etc.). BCP-47, e.g.
+   * `'en'`, `'fr'`. Defaults to the browser locale.
+   */
+  locale?: string;
+  /**
+   * Disable the automatic pre-roll intercept on the first play. When `true`,
+   * ads are only requested through `adBreaks` scheduling. Defaults to
+   * `false`.
+   */
+  disablePreloadOnPlay?: boolean;
 }
 
 export interface AdBreak {
   type: AdBreakType;
+  /** Seconds into the content for `mid-roll` / `custom` breaks. Ignored for pre/post. */
   offsetSeconds?: number;
   tagUrl: string;
+}
+
+/**
+ * Snapshot of the currently-playing ad, surfaced with `adstart` / `adprogress`
+ * so a custom overlay can render a countdown, skip affordance, and ad index.
+ */
+export interface AdInfo {
+  /** True for linear (video/audio) ads that block content; false for overlays. */
+  linear: boolean;
+  /** Total ad duration in seconds (`-1` if unknown, e.g. live VPAID). */
+  duration: number;
+  /** Whether the ad can be skipped at all. */
+  skippable: boolean;
+  /** 1-based position of this ad within its pod/break. */
+  podPosition: number;
+  /** Total number of ads in the current pod/break (`1` for standalone ads). */
+  podCount: number;
+  /** The break this ad belongs to, when known. */
+  adBreakType: AdBreakType | null;
+  /** Advertiser title, when provided by the creative. */
+  title: string | null;
+}
+
+export interface AdProgressEvent {
+  /** Seconds elapsed in the current ad. */
+  currentTime: number;
+  /** Total ad duration in seconds (`-1` if unknown). */
+  duration: number;
+  /** Seconds until the ad becomes skippable; `-1` when not skippable / already skippable. */
+  skipTimeRemaining: number;
+}
+
+export interface AdErrorEvent {
+  /** IMA error code when available. */
+  code: number;
+  message: string;
+  /** Whether content playback can continue (linear ad errors are recoverable). */
+  recoverable: boolean;
 }
 
 export type CastConnectionState =
@@ -304,6 +366,10 @@ export type MediaPlyrEventType =
   | 'adstart'
   | 'adend'
   | 'adskip'
+  | 'adprogress'
+  | 'aderror'
+  | 'adbreakstart'
+  | 'adbreakend'
   | 'metadata'
   | 'texttrackchange'
   | 'offlineprogress'

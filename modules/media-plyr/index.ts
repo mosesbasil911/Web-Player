@@ -16,6 +16,7 @@ export type {
 export { OfflineManager } from './integrations/OfflineManager.ts';
 export { CastManager } from './integrations/CastManager.ts';
 export { DrmManager } from './integrations/DrmManager.ts';
+export { AdsManager } from './integrations/AdsManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';
 export { AudioPlayer } from './components/AudioPlayer.tsx';
@@ -38,6 +39,8 @@ export type { CastButtonProps } from './components/controls/CastButton.tsx';
 
 export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
+export { AdOverlay } from './components/overlays/AdOverlay.tsx';
+export type { AdOverlayProps } from './components/overlays/AdOverlay.tsx';
 
 export {
   GlobalMuteContext,
@@ -74,6 +77,9 @@ export type {
   DrmConfig,
   AdsConfig,
   AdBreak,
+  AdInfo,
+  AdProgressEvent,
+  AdErrorEvent,
   CastConfig,
   CastConnectionState,
   CastStateEvent,

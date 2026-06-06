@@ -15,6 +15,7 @@ import { PrevNextButtons } from './controls/PrevNextButtons.tsx';
 import { RepeatShuffleButtons } from './controls/RepeatShuffleButtons.tsx';
 import { SpeedSelector } from './controls/SpeedSelector.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
+import { AdOverlay } from './overlays/AdOverlay.tsx';
 import { LyricsPanel } from './LyricsPanel.tsx';
 import { formatTime } from '../utils/formatTime.ts';
 import type {
@@ -186,6 +187,7 @@ export function AudioPlayer({
 
   const [queueOpen, setQueueOpen] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [adActive, setAdActive] = useState(false);
   const endedHandledRef = useRef(false);
   const queueFinishedRef = useRef(false);
 
@@ -540,6 +542,11 @@ export function AudioPlayer({
   const title = currentTrack?.title ?? activeConfig.title;
   const artist = currentTrack?.artist;
   const isPlaylist = tracks.length > 1;
+  // Ads are per-track for playlists (each MediaTrack may carry its own tag),
+  // falling back to the player-level config. Offline playback suppresses ads.
+  const adsConfig = activeOfflinePlay
+    ? undefined
+    : (currentTrack?.adsConfig ?? config.ads);
 
   // Keep the <audio> element mounted even when there is a fatal error.
   // Unmounting it destroys the Shaka player, which breaks offline playback
@@ -553,7 +560,10 @@ export function AudioPlayer({
         preload="metadata"
       />
 
-      <div className="media-plyr-audio">
+      <div
+        className="media-plyr-audio"
+        data-ad-active={adActive ? 'true' : 'false'}
+      >
         {hasFatalError && (
           <ErrorOverlay
             error={{
@@ -564,6 +574,12 @@ export function AudioPlayer({
             onRetry={handleRetry}
           />
         )}
+
+        <AdOverlay
+          player={player}
+          adsConfig={adsConfig}
+          onAdActiveChange={setAdActive}
+        />
 
         {/* Track Info Row */}
         <div className="media-plyr-audio__info">

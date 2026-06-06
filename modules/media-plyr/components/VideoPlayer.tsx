@@ -6,6 +6,7 @@ import { PlaybackMemory } from '../core/PlaybackMemory.ts';
 import { ControlBar } from './controls/ControlBar.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
 import { BufferingOverlay } from './overlays/BufferingOverlay.tsx';
+import { AdOverlay } from './overlays/AdOverlay.tsx';
 import type { VideoPlayerProps, RepeatMode } from '../types/index.ts';
 import '../styles/media-plyr.css';
 
@@ -50,6 +51,7 @@ export function VideoPlayer({
 
   const [repeat, setRepeat] = useState<RepeatMode>('none');
   const [shuffle, setShuffle] = useState(false);
+  const [adActive, setAdActive] = useState(false);
 
   useEffect(() => {
     if (!memoryConfig?.enabled || !player?.videoElement) return;
@@ -92,7 +94,10 @@ export function VideoPlayer({
   // playback. Instead, render the error overlay on top of the video layer.
   return (
     <div className={`media-plyr media-plyr--video ${className ?? ''}`}>
-      <div className="media-plyr__container">
+      <div
+        className="media-plyr__container"
+        data-ad-active={adActive ? 'true' : 'false'}
+      >
         <video
           ref={ref}
           className="media-plyr__video"
@@ -103,13 +108,19 @@ export function VideoPlayer({
           aria-label={config.title}
         />
 
-        {!ready && !hasFatalError && (
+        {!ready && !hasFatalError && !adActive && (
           <div className="media-plyr__loading-overlay">
             <div className="media-plyr__spinner" />
           </div>
         )}
 
-        <BufferingOverlay visible={isBuffering} />
+        <BufferingOverlay visible={isBuffering && !adActive} />
+
+        <AdOverlay
+          player={player}
+          adsConfig={config.ads}
+          onAdActiveChange={setAdActive}
+        />
 
         {hasFatalError && (
           <ErrorOverlay
@@ -122,19 +133,21 @@ export function VideoPlayer({
           />
         )}
 
-        <ControlBar
-          player={player}
-          state={state}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
-          onPrev={onPrev}
-          onNext={onNext}
-          repeat={repeat}
-          shuffle={shuffle}
-          onRepeatChange={setRepeat}
-          onShuffleChange={setShuffle}
-          castConfig={config.cast}
-        />
+        {!adActive && (
+          <ControlBar
+            player={player}
+            state={state}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onPrev={onPrev}
+            onNext={onNext}
+            repeat={repeat}
+            shuffle={shuffle}
+            onRepeatChange={setRepeat}
+            onShuffleChange={setShuffle}
+            castConfig={config.cast}
+          />
+        )}
       </div>
     </div>
   );
