@@ -1,11 +1,10 @@
 import { useEffect } from "react";
 import type { MediaPlyrInstance, PlaybackState } from "../types/index.ts";
 
-const SEEK_STEP = 5;
-
 export function useKeyboardShortcuts(
   player: MediaPlyrInstance | null,
   state: PlaybackState,
+  seekStep: number = 5,
 ) {
   useEffect(() => {
     if (!player) return;
@@ -33,14 +32,12 @@ export function useKeyboardShortcuts(
 
         case "ArrowLeft":
           e.preventDefault();
-          player.seek(Math.max(0, state.currentTime - SEEK_STEP));
+          player.seekBackward(seekStep);
           break;
 
         case "ArrowRight":
           e.preventDefault();
-          player.seek(
-            Math.min(state.duration, state.currentTime + SEEK_STEP),
-          );
+          player.seekForward(seekStep);
           break;
 
         case "ArrowUp":
@@ -81,5 +78,5 @@ export function useKeyboardShortcuts(
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [player, state]);
+  }, [player, state, seekStep]);
 }

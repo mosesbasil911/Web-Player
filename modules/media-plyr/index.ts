@@ -31,6 +31,7 @@ export { TimeDisplay } from './components/controls/TimeDisplay.tsx';
 export { FullscreenButton } from './components/controls/FullscreenButton.tsx';
 export { SpeedSelector } from './components/controls/SpeedSelector.tsx';
 export { PrevNextButtons } from './components/controls/PrevNextButtons.tsx';
+export { SeekButtons } from './components/controls/SeekButtons.tsx';
 export { RepeatShuffleButtons } from './components/controls/RepeatShuffleButtons.tsx';
 export { PipButton } from './components/controls/PipButton.tsx';
 export { CaptionButton } from './components/controls/CaptionButton.tsx';

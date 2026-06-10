@@ -39,7 +39,7 @@ export function VideoPlayer({
 
   const { ref, state, error, ready, player } = useMediaPlyr(resolvedConfig);
 
-  useKeyboardShortcuts(player, state);
+  useKeyboardShortcuts(player, state, config.seekStep);
 
   const { muted: globalMuted } = useGlobalMute();
   useEffect(() => {
