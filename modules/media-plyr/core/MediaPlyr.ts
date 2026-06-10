@@ -180,6 +180,18 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.element.currentTime = clamped;
   }
 
+  seekForward(seconds?: number): void {
+    if (!this.element) return;
+    const step = seconds ?? this.config.seekStep ?? 5;
+    this.seek(this.element.currentTime + step);
+  }
+
+  seekBackward(seconds?: number): void {
+    if (!this.element) return;
+    const step = seconds ?? this.config.seekStep ?? 5;
+    this.seek(this.element.currentTime - step);
+  }
+
   setVolume(volume: number): void {
     if (!this.element) return;
     this.element.volume = Math.max(0, Math.min(1, volume));

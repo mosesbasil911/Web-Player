@@ -12,6 +12,7 @@ import { VolumeControl } from './controls/VolumeControl.tsx';
 import { MuteButton } from './controls/MuteButton.tsx';
 import { TimeDisplay } from './controls/TimeDisplay.tsx';
 import { PrevNextButtons } from './controls/PrevNextButtons.tsx';
+import { SeekButtons } from './controls/SeekButtons.tsx';
 import { RepeatShuffleButtons } from './controls/RepeatShuffleButtons.tsx';
 import { SpeedSelector } from './controls/SpeedSelector.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
@@ -56,6 +57,7 @@ export function AudioPlayer({
   offlinePlayRequest,
   onOfflinePlayComplete,
 }: AudioPlayerProps) {
+  const seekStep = config.seekStep ?? 5;
   const tracks = useMemo<MediaTrack[]>(() => {
     if (playlist && playlist.length > 0) return playlist;
     return [
@@ -175,7 +177,7 @@ export function AudioPlayer({
 
   const { ref, state, error, ready, player } = useMediaPlyr(resolvedConfig);
 
-  useKeyboardShortcuts(player, state);
+  useKeyboardShortcuts(player, state, seekStep);
 
   const { muted: globalMuted } = useGlobalMute();
   useEffect(() => {
@@ -623,6 +625,7 @@ export function AudioPlayer({
               onPrev={handlePrev}
               onNext={handleNext}
             />
+            <SeekButtons player={player} seekStep={seekStep} />
             <PlayPauseButton player={player} state={state} />
           </div>
 

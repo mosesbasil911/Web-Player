@@ -796,11 +796,33 @@
 /* Show controls that are hidden by default in video compact mode */
 .media-plyr--audio .media-plyr__btn--prev,
 .media-plyr--audio .media-plyr__btn--next,
+.media-plyr--audio .media-plyr__btn--seek-backward,
+.media-plyr--audio .media-plyr__btn--seek-forward,
 .media-plyr--audio .media-plyr__btn--repeat,
 .media-plyr--audio .media-plyr__btn--shuffle,
 .media-plyr--audio .media-plyr__speed,
 .media-plyr--audio .media-plyr__volume-bar {
   display: flex;
+}
+
+/* Seek Buttons */
+.media-plyr__btn--seek-backward,
+.media-plyr__btn--seek-forward {
+  position: relative;
+  display: none;
+}
+
+.media-plyr__seek-label {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+  color: currentColor;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Queue Panel */

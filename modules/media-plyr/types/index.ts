@@ -283,6 +283,12 @@ export interface MediaPlyrConfig {
   startTime?: number;
   playbackRate?: PlaybackSpeed;
 
+  /**
+   * Number of seconds to seek forward/backward when the seek buttons are
+   * pressed or the arrow-key shortcuts are used. Defaults to `5`.
+   */
+  seekStep?: number;
+
   drm?: DrmConfig;
   cast?: CastConfig;
   ads?: AdsConfig;
@@ -430,6 +436,8 @@ export interface MediaPlyrInstance {
   pause(): void;
   stop(): void;
   seek(time: number): void;
+  seekForward(seconds?: number): void;
+  seekBackward(seconds?: number): void;
   setVolume(volume: number): void;
   setMuted(muted: boolean): void;
   setPlaybackRate(rate: PlaybackSpeed): void;
