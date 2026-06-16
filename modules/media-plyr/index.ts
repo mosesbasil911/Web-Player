@@ -16,6 +16,7 @@ export type {
 export { OfflineManager } from './integrations/OfflineManager.ts';
 export { CastManager } from './integrations/CastManager.ts';
 export { DrmManager } from './integrations/DrmManager.ts';
+export { StreamingAuthManager } from './integrations/StreamingAuthManager.ts';
 export { AdsManager } from './integrations/AdsManager.ts';
 
 export { VideoPlayer } from './components/VideoPlayer.tsx';

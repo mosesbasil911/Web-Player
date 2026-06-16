@@ -1,6 +1,7 @@
 import shaka from 'shaka-player';
 import { EventEmitter } from './EventEmitter.ts';
 import { DrmManager } from '../integrations/DrmManager.ts';
+import { StreamingAuthManager } from '../integrations/StreamingAuthManager.ts';
 import { orderSources } from '../utils/orderSources.ts';
 import type {
   MediaPlyrConfig,
@@ -127,9 +128,10 @@ export class MediaPlyr implements MediaPlyrInstance {
     }
 
     try {
-      // Re-apply DRM in case this source uses a different key system /
-      // license server (e.g. switching tracks in a protected playlist).
+      // Re-apply DRM / streaming auth in case this source uses different
+      // servers or tokens (e.g. switching tracks in a protected playlist).
       this.configureDrm();
+      this.configureStreamingAuth();
       await this.player.load(manifest.url, config.startTime);
       if (this.destroyed) return;
       await this.applySubtitleTracks();
@@ -328,6 +330,9 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.drmManager?.destroy();
     this.drmManager = null;
 
+    this.streamingAuthManager?.destroy();
+    this.streamingAuthManager = null;
+
     if (this.player) {
       this.player.destroy();
       this.player = null;
@@ -347,6 +352,7 @@ export class MediaPlyr implements MediaPlyrInstance {
   // --- Private ---
 
   private drmManager: DrmManager | null = null;
+  private streamingAuthManager: StreamingAuthManager | null = null;
 
   private configureDrm(): void {
     if (!this.player || !this.config.drm) return;
@@ -354,6 +360,33 @@ export class MediaPlyr implements MediaPlyrInstance {
     this.drmManager?.destroy();
     this.drmManager = new DrmManager(this.player, this.config.drm);
     this.drmManager.apply();
+  }
+
+  private configureStreamingAuth(): void {
+    if (!this.player) return;
+
+    if (!this.config.streaming) {
+      this.streamingAuthManager?.destroy();
+      this.streamingAuthManager = null;
+      return;
+    }
+
+    const { requestHeaders, withCredentials } = this.config.streaming;
+    if (
+      (!requestHeaders || Object.keys(requestHeaders).length === 0)
+      && !withCredentials
+    ) {
+      this.streamingAuthManager?.destroy();
+      this.streamingAuthManager = null;
+      return;
+    }
+
+    this.streamingAuthManager?.destroy();
+    this.streamingAuthManager = new StreamingAuthManager(
+      this.player,
+      this.config.streaming,
+    );
+    this.streamingAuthManager.apply();
   }
 
   /**
@@ -396,6 +429,7 @@ export class MediaPlyr implements MediaPlyrInstance {
         this.configureUITextDisplayer();
       }
       this.configureDrm();
+      this.configureStreamingAuth();
       this.configureAbr();
       this.configureStreaming();
       this.bindShakaEvents();

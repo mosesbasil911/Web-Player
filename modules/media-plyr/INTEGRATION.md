@@ -321,6 +321,13 @@ streaming: {
   lowLatencyMode: true,   // for LL-HLS / LL-DASH live streams
   bufferingGoal: 30,
   rebufferingGoal: 2,
+  // Optional: JWT or session token for manifest/segment requests. Applied via
+  // Shaka's networking-engine request filter (MSE path only — not native iOS HLS).
+  requestHeaders: {
+    Authorization: 'Bearer <token>',
+  },
+  // Optional: send cookies / HTTP auth on cross-origin manifest/segment requests.
+  withCredentials: true,
 },
 abr: {
   enabled: true,
