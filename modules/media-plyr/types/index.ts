@@ -232,6 +232,18 @@ export interface StreamingConfig {
     backoffFactor?: number;
     timeout?: number;
   };
+  /**
+   * Extra HTTP headers attached to manifest and segment requests. Use for
+   * authorization tokens your CDN/origin requires (e.g.
+   * `{ Authorization: 'Bearer …' }`). Applied via Shaka's networking-engine
+   * request filter on the MSE path — not invoked for native HLS on iOS Safari.
+   */
+  requestHeaders?: Record<string, string>;
+  /**
+   * Send credentials (cookies, HTTP auth) with cross-origin manifest and
+   * segment requests. Defaults to `false`.
+   */
+  withCredentials?: boolean;
 }
 
 export interface PlaybackMemoryConfig {

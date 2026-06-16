@@ -1,5 +1,6 @@
 import shaka from 'shaka-player';
 import { orderSources } from '../utils/orderSources.ts';
+import { StreamingAuthManager } from '../integrations/StreamingAuthManager.ts';
 import type { MediaPlyrConfig, MediaSource } from '../types/index.ts';
 
 /**
@@ -14,6 +15,7 @@ import type { MediaPlyrConfig, MediaSource } from '../types/index.ts';
 export class CrossfadeEngine {
   private element: HTMLAudioElement;
   private player: shaka.Player | null = null;
+  private streamingAuthManager: StreamingAuthManager | null = null;
   private currentSourceUrl: string | null = null;
   private fadeRaf: number | null = null;
   private destroyed = false;
@@ -62,6 +64,8 @@ export class CrossfadeEngine {
         return;
       }
     }
+
+    this.configureStreamingAuth(config);
 
     this.element.pause();
     this.element.currentTime = 0;
@@ -196,6 +200,8 @@ export class CrossfadeEngine {
     if (this.destroyed) return;
     this.destroyed = true;
     this.cancelFade();
+    this.streamingAuthManager?.destroy();
+    this.streamingAuthManager = null;
     if (this.player) {
       this.player.destroy();
       this.player = null;
@@ -212,5 +218,26 @@ export class CrossfadeEngine {
     );
     if (sources.length === 0) return null;
     return orderSources(sources, config.preferredOrder)[0] ?? null;
+  }
+
+  private configureStreamingAuth(config: MediaPlyrConfig): void {
+    if (!this.player || !config.streaming) return;
+
+    const { requestHeaders, withCredentials } = config.streaming;
+    if (
+      (!requestHeaders || Object.keys(requestHeaders).length === 0)
+      && !withCredentials
+    ) {
+      this.streamingAuthManager?.destroy();
+      this.streamingAuthManager = null;
+      return;
+    }
+
+    this.streamingAuthManager?.destroy();
+    this.streamingAuthManager = new StreamingAuthManager(
+      this.player,
+      config.streaming,
+    );
+    this.streamingAuthManager.apply();
   }
 }
