@@ -152,6 +152,8 @@ export class CastManager {
 
   private _connectionState: CastConnectionState = 'NO_DEVICES_AVAILABLE';
   private _deviceName: string | null = null;
+  private _mediaTitle: string | null = null;
+  private _mediaArtwork: string | null = null;
 
   constructor(player: MediaPlyrInstance, config: CastConfig = {}) {
     this.player = player;
@@ -308,6 +310,19 @@ export class CastManager {
   /** Stop playback on the remote receiver. */
   stop(): void {
     this.remoteController?.stop();
+  }
+
+  /**
+   * Override title/artwork sent to the Cast receiver. Useful for audio
+   * tracks where `document.title` and `video.poster` are not meaningful.
+   */
+  setMediaMetadata(opts?: { title?: string; artwork?: string }): void {
+    if (opts?.title !== undefined) {
+      this._mediaTitle = opts.title || null;
+    }
+    if (opts?.artwork !== undefined) {
+      this._mediaArtwork = opts.artwork || null;
+    }
   }
 
   on(
@@ -474,10 +489,12 @@ export class CastManager {
   }
 
   private getTitle(): string {
-    return document.title || 'Media';
+    return this._mediaTitle ?? document.title ?? 'Media';
   }
 
   private getPoster(): string | null {
+    if (this._mediaArtwork) return this._mediaArtwork;
+
     const el = this.player.videoElement;
     if (el instanceof HTMLVideoElement && el.poster) return el.poster;
     return null;
