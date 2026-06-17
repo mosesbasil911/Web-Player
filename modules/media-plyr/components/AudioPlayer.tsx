@@ -15,6 +15,7 @@ import { PrevNextButtons } from './controls/PrevNextButtons.tsx';
 import { SeekButtons } from './controls/SeekButtons.tsx';
 import { RepeatShuffleButtons } from './controls/RepeatShuffleButtons.tsx';
 import { SpeedSelector } from './controls/SpeedSelector.tsx';
+import { CastButton } from './controls/CastButton.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
 import { AdOverlay } from './overlays/AdOverlay.tsx';
 import { LyricsPanel } from './LyricsPanel.tsx';
@@ -113,6 +114,7 @@ export function AudioPlayer({
       streaming: config.streaming,
       preferredOrder: config.preferredOrder,
       crossfade: config.crossfade,
+      cast: config.cast,
     });
     // queueState.currentIndex drives recomputation when the track changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -634,6 +636,16 @@ export function AudioPlayer({
             <MuteButton player={player} state={state} />
             <VolumeControl player={player} state={state} />
             <SpeedSelector player={player} state={state} />
+            <CastButton
+              player={player}
+              state={state}
+              castConfig={config.cast}
+              reloadKey={mediaId}
+              mediaTitle={currentTrack?.title ?? config.title}
+              mediaArtwork={
+                currentTrack?.artwork ?? currentTrack?.poster ?? config.poster
+              }
+            />
             {currentTrack?.lyrics && (
               <button
                 className={`media-plyr__btn media-plyr__btn--lyrics${lyricsOpen ? ' media-plyr__btn--active' : ''}`}

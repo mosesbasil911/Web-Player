@@ -12,9 +12,24 @@ export interface CastButtonProps {
   player: MediaPlyrInstance | null;
   state: PlaybackState;
   castConfig?: CastConfig;
+  /**
+   * When this value changes while a Cast session is active, the current
+   * source is reloaded on the receiver (e.g. queue track changes in audio).
+   */
+  reloadKey?: string;
+  /** Override title metadata sent to the Cast receiver. */
+  mediaTitle?: string;
+  /** Override artwork metadata sent to the Cast receiver. */
+  mediaArtwork?: string;
 }
 
-export function CastButton({ player, castConfig }: CastButtonProps) {
+export function CastButton({
+  player,
+  castConfig,
+  reloadKey,
+  mediaTitle,
+  mediaArtwork,
+}: CastButtonProps) {
   const managerRef = useRef<CastManager | null>(null);
   const [connectionState, setConnectionState] = useState<CastConnectionState>(
     'NO_DEVICES_AVAILABLE',
@@ -47,6 +62,22 @@ export function CastButton({ player, castConfig }: CastButtonProps) {
       managerRef.current = null;
     };
   }, [player, supported, castConfig]);
+
+  useEffect(() => {
+    managerRef.current?.setMediaMetadata({
+      title: mediaTitle,
+      artwork: mediaArtwork,
+    });
+  }, [mediaTitle, mediaArtwork]);
+
+  // Reload receiver media when the active source changes mid-session.
+  useEffect(() => {
+    const mgr = managerRef.current;
+    if (!mgr || !reloadKey || !mgr.connected) return;
+
+    mgr.setMediaMetadata({ title: mediaTitle, artwork: mediaArtwork });
+    mgr.loadMediaOnReceiver();
+  }, [reloadKey, mediaTitle, mediaArtwork]);
 
   const handleClick = useCallback(() => {
     const mgr = managerRef.current;

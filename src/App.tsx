@@ -223,6 +223,7 @@ const AUDIO_BASE_CONFIG: MediaPlyrConfig = {
   sources: AUDIO_PLAYLIST[0].sources,
   title: AUDIO_PLAYLIST[0].title,
   autoplay: false,
+  cast: CAST_CONFIG,
 };
 
 const CROSSFADE_DURATION_OPTIONS = [
