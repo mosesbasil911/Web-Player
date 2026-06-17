@@ -16,6 +16,7 @@ import { RepeatShuffleButtons } from './RepeatShuffleButtons.tsx';
 import { PipButton } from './PipButton.tsx';
 import { CaptionButton } from './CaptionButton.tsx';
 import { CastButton } from './CastButton.tsx';
+import { AirPlayButton } from './AirPlayButton.tsx';
 
 export interface ControlBarProps {
   player: MediaPlyrInstance | null;
@@ -77,6 +78,7 @@ export function ControlBar({
           <SpeedSelector player={player} state={state} />
           <CaptionButton player={player} />
           <CastButton player={player} state={state} castConfig={castConfig} />
+          <AirPlayButton player={player} />
           <PipButton player={player} state={state} />
           <FullscreenButton player={player} state={state} />
         </div>

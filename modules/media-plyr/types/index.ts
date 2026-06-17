@@ -176,6 +176,13 @@ export interface CastStateEvent {
   deviceName: string | null;
 }
 
+export interface AirPlayStateEvent {
+  /** True when at least one AirPlay target is available on the local network. */
+  available: boolean;
+  /** True when the media element is actively streaming to an AirPlay target. */
+  active: boolean;
+}
+
 export interface OfflineConfig {
   enabled: boolean;
 }
@@ -381,6 +388,7 @@ export type MediaPlyrEventType =
   | 'shuffle'
   | 'mute'
   | 'caststate'
+  | 'airplaystate'
   | 'adstart'
   | 'adend'
   | 'adskip'

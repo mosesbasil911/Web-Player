@@ -15,6 +15,7 @@ export type {
 } from './integrations/MediaSessionManager.ts';
 export { OfflineManager } from './integrations/OfflineManager.ts';
 export { CastManager } from './integrations/CastManager.ts';
+export { AirPlayManager } from './integrations/AirPlayManager.ts';
 export { DrmManager } from './integrations/DrmManager.ts';
 export { StreamingAuthManager } from './integrations/StreamingAuthManager.ts';
 export { AdsManager } from './integrations/AdsManager.ts';
@@ -38,6 +39,8 @@ export { PipButton } from './components/controls/PipButton.tsx';
 export { CaptionButton } from './components/controls/CaptionButton.tsx';
 export { CastButton } from './components/controls/CastButton.tsx';
 export type { CastButtonProps } from './components/controls/CastButton.tsx';
+export { AirPlayButton } from './components/controls/AirPlayButton.tsx';
+export type { AirPlayButtonProps } from './components/controls/AirPlayButton.tsx';
 
 export { ErrorOverlay } from './components/overlays/ErrorOverlay.tsx';
 export { BufferingOverlay } from './components/overlays/BufferingOverlay.tsx';
@@ -85,6 +88,7 @@ export type {
   CastConfig,
   CastConnectionState,
   CastStateEvent,
+  AirPlayStateEvent,
   OfflineConfig,
   AbrConfig,
   StreamingConfig,

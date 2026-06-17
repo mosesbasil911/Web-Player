@@ -554,6 +554,69 @@ if (CastManager.isSupported()) {
 
 Cast is Chrome-only (not Edge). Pass `cast` in `MediaPlyrConfig` if you want the config available to the manager, but Cast is wired separately via `CastManager`.
 
+### AirPlayManager — Apple AirPlay
+
+No external SDK. AirPlay streams the **existing local `<video>` element** directly to the AirPlay target — the browser proxies all playback commands automatically. The manager's only jobs are to surface device availability and trigger the native OS picker.
+
+**Platform:** Safari on macOS and iOS only. `AirPlayManager.isSupported()` returns `false` in Chrome, Edge, and Firefox, so it is safe to include unconditionally.
+
+```typescript
+import { AirPlayManager } from './media-plyr/integrations/AirPlayManager.ts';
+
+// Call after player.attach() resolves — listeners must be on a live element.
+if (AirPlayManager.isSupported()) {
+  const airPlayMgr = new AirPlayManager(player);
+
+  airPlayMgr.on('airplaystate', (data) => {
+    const { available, active } = data as {
+      available: boolean;
+      active: boolean;
+    };
+
+    // Show/hide the button based on whether nearby AirPlay targets exist.
+    airPlayBtn.hidden = !available;
+
+    // Reflect active streaming state in the button.
+    airPlayBtn.classList.toggle('active', active);
+    airPlayBtn.setAttribute('aria-label', active ? 'Stop AirPlay' : 'AirPlay');
+  });
+
+  // init() registers the WebKit event listeners on the media element.
+  // Must be called after player.attach() so the element exists.
+  airPlayMgr.init();
+
+  // Open the native device picker on button click.
+  // While active, the picker shows a "Stop AirPlay" option — there is no
+  // programmatic way to end an AirPlay session from JavaScript.
+  airPlayBtn.addEventListener('click', () => airPlayMgr.showPicker());
+
+  // on teardown:
+  airPlayMgr.destroy();
+}
+```
+
+#### Key differences from Chromecast
+
+|                           | Chromecast (`CastManager`)                      | AirPlay (`AirPlayManager`)                          |
+| ------------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| External SDK              | Yes — loaded dynamically                        | No                                                  |
+| Separate receiver session | Yes — media fetched by receiver from CDN        | No — local element mirrored to target               |
+| Playback proxy commands   | Required (`playOrPause`, `seek`, `setVolume` …) | None — browser handles automatically                |
+| Stop programmatically     | `castMgr.endSession()`                          | Not possible from JS; user uses OS picker           |
+| Browser support           | Chrome desktop only                             | Safari on macOS / iOS only                          |
+| `isSupported()` check     | `'chrome' in window`                            | `'WebKitPlaybackTargetAvailabilityEvent' in window` |
+
+#### `AirPlayStateEvent`
+
+```typescript
+interface AirPlayStateEvent {
+  /** True when at least one AirPlay target is available on the local network. */
+  available: boolean;
+  /** True when the element is actively streaming to an AirPlay target. */
+  active: boolean;
+}
+```
+
 ### AdsManager — Google IMA ads
 
 Loads the IMA SDK and plays VAST/VMAP ads against the bound media element. Give
