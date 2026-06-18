@@ -65,7 +65,7 @@ export class MediaSessionManager {
       : [];
 
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: input.title,
+      title: input.title || 'Media',
       artist: input.artist ?? '',
       album: input.album ?? '',
       artwork,
