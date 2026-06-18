@@ -16,6 +16,7 @@ import { SeekButtons } from './controls/SeekButtons.tsx';
 import { RepeatShuffleButtons } from './controls/RepeatShuffleButtons.tsx';
 import { SpeedSelector } from './controls/SpeedSelector.tsx';
 import { CastButton } from './controls/CastButton.tsx';
+import { AirPlayButton } from './controls/AirPlayButton.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
 import { AdOverlay } from './overlays/AdOverlay.tsx';
 import { LyricsPanel } from './LyricsPanel.tsx';
@@ -652,6 +653,7 @@ export function AudioPlayer({
                 currentTrack?.artwork ?? currentTrack?.poster ?? config.poster
               }
             />
+            <AirPlayButton player={player} />
             {currentTrack?.lyrics && (
               <button
                 className={`media-plyr__btn media-plyr__btn--lyrics${lyricsOpen ? ' media-plyr__btn--active' : ''}`}

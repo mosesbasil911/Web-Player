@@ -10,14 +10,12 @@ export interface AirPlayButtonProps {
 }
 
 /**
- * Renders an AirPlay button that appears only when AirPlay targets are
- * available on the local network (Safari / WebKit only). Clicking it opens
- * the native OS device picker. The button reflects active-streaming state
- * with the `media-plyr__btn--active` modifier class.
+ * Renders an AirPlay button in Safari (macOS / iOS). The button is always
+ * visible when the WebKit AirPlay API is supported; clicking opens the native
+ * OS device picker. Dimmed when no targets are on the network yet.
  *
- * The component hides itself (`return null`) on any browser that does not
- * support the WebKit AirPlay API (Chrome, Firefox, Edge), so it is safe to
- * include in the control bar unconditionally.
+ * Hidden in Chrome, Firefox, and Edge — safe to include in the control bar
+ * unconditionally.
  */
 export function AirPlayButton({ player }: AirPlayButtonProps) {
   const managerRef = useRef<AirPlayManager | null>(null);
@@ -47,14 +45,17 @@ export function AirPlayButton({ player }: AirPlayButtonProps) {
     };
   }, [player, supported]);
 
-  // Hidden in non-WebKit browsers or when no AirPlay devices are nearby.
-  if (!supported || !available) return null;
+  if (!supported) return null;
 
-  const label = active ? 'Stop AirPlay' : 'AirPlay';
+  const label = active
+    ? 'Stop AirPlay'
+    : available
+      ? 'AirPlay'
+      : 'AirPlay — no devices found';
 
   return (
     <button
-      className={`media-plyr__btn media-plyr__btn--airplay${active ? ' media-plyr__btn--active' : ''}`}
+      className={`media-plyr__btn media-plyr__btn--airplay${active ? ' media-plyr__btn--active' : ''}${!available && !active ? ' media-plyr__btn--airplay-idle' : ''}`}
       onClick={() => managerRef.current?.showPicker()}
       aria-label={label}
       title={label}

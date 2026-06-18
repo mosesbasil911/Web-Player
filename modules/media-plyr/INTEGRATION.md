@@ -629,15 +629,18 @@ if (CastManager.isSupported()) {
 
 Cast is Chrome-only (not Edge). Pass `cast` in `MediaPlyrConfig` if you want the config available to the manager, but Cast is wired separately via `CastManager`.
 
+The React `CastButton` and `AirPlayButton` are included in both `VideoPlayer`
+and `AudioPlayer`. Cast is always visible in Chrome by default (`cast.alwaysShowButton: false` to opt out); AirPlay is always visible in Safari.
+
 **Auth on Cast:** the receiver device fetches the manifest URL independently —
 Shaka request filters do not run on the TV. Use signed manifest URLs or a custom
 Cast receiver that attaches tokens server-side.
 
 ### AirPlayManager — Apple AirPlay
 
-No external SDK. AirPlay streams the **existing local `<video>` element** directly to the AirPlay target — the browser proxies all playback commands automatically. The manager's only jobs are to surface device availability and trigger the native OS picker.
+No external SDK. AirPlay streams the **existing local `<video>` or `<audio>` element** directly to the AirPlay target — the browser proxies all playback commands automatically. The manager's only jobs are to surface device availability and trigger the native OS picker.
 
-**Platform:** Safari on macOS and iOS only. `AirPlayManager.isSupported()` returns `false` in Chrome, Edge, and Firefox, so it is safe to include unconditionally.
+**Platform:** Safari on macOS and iOS only. `AirPlayManager.isSupported()` returns `false` in Chrome, Edge, and Firefox. The React `AirPlayButton` is in both video and audio players, always visible in Safari (dimmed when no targets are nearby); clicking opens the native picker.
 
 ```typescript
 import { AirPlayManager } from './media-plyr/integrations/AirPlayManager.ts';
@@ -652,8 +655,9 @@ if (AirPlayManager.isSupported()) {
       active: boolean;
     };
 
-    // Show/hide the button based on whether nearby AirPlay targets exist.
-    airPlayBtn.hidden = !available;
+    // Optional: dim the button when no targets are nearby (React CastButton
+    // does this automatically). Always show the button in Safari for discoverability.
+    airPlayBtn.classList.toggle('idle', !available && !active);
 
     // Reflect active streaming state in the button.
     airPlayBtn.classList.toggle('active', active);

@@ -320,6 +320,11 @@ export class MediaPlyr implements MediaPlyrInstance {
     return this.element;
   }
 
+  getManifestUri(): string | null {
+    const uri = this.player?.getAssetUri();
+    return uri || null;
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
