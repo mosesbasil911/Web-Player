@@ -2,6 +2,7 @@ import shaka from 'shaka-player';
 import { EventEmitter } from './EventEmitter.ts';
 import { DrmManager } from '../integrations/DrmManager.ts';
 import { StreamingAuthManager } from '../integrations/StreamingAuthManager.ts';
+import { configureShakaStreaming } from '../utils/configureShakaStreaming.ts';
 import { orderSources } from '../utils/orderSources.ts';
 import type {
   MediaPlyrConfig,
@@ -391,9 +392,9 @@ export class MediaPlyr implements MediaPlyrInstance {
 
   /**
    * Picks the best manifest to hand Shaka. Honours `preferredOrder` if
-   * provided, otherwise defaults to HLS-first — Shaka handles HLS via MSE on
-   * all modern browsers and falls back to native `video.src=` on iOS Safari,
-   * so no device-specific branching is needed.
+   * provided, otherwise defaults to HLS-first — Shaka uses MSE / ManagedMediaSource
+   * where available and falls back to native `video.src=` HLS on older iOS or
+   * when `preferNativeHls` / `useNativeHlsForFairPlay` request native playback.
    */
   private pickManifest(): MediaSource | null {
     const sources = this.config.sources.filter(
@@ -476,22 +477,7 @@ export class MediaPlyr implements MediaPlyrInstance {
 
   private configureStreaming(): void {
     if (!this.player) return;
-
-    const sc = this.config.streaming;
-    const streamingConfig: Record<string, unknown> = {
-      // Evict buffer more than 30 s behind the playhead so backward seeks
-      // don't collide with stale SourceBuffer data (prevents
-      // CHUNK_DEMUXER_ERROR_APPEND_FAILED on DASH).
-      bufferBehind: 30,
-    };
-
-    if (sc?.rebufferingGoal !== undefined) streamingConfig.rebufferingGoal = sc.rebufferingGoal;
-    if (sc?.bufferingGoal !== undefined) streamingConfig.bufferingGoal = sc.bufferingGoal;
-    if (sc?.bufferBehind !== undefined) streamingConfig.bufferBehind = sc.bufferBehind;
-    if (sc?.lowLatencyMode !== undefined) streamingConfig.lowLatencyMode = sc.lowLatencyMode;
-    if (sc?.retryParameters) streamingConfig.retryParameters = sc.retryParameters;
-
-    this.player.configure('streaming', streamingConfig);
+    configureShakaStreaming(this.player, this.config.streaming);
   }
 
   private mediaEventHandlers = new Map<string, EventListener>();

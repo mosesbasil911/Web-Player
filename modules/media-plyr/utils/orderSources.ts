@@ -1,8 +1,8 @@
 import type { MediaSource, SourceContainer } from '../types/index.ts';
 
 /**
- * Default manifest preference. HLS first — Shaka handles HLS via MSE on all
- * modern browsers and falls back to native `video.src=` on iOS Safari, so
+ * Default manifest preference. HLS first — Shaka uses MSE / ManagedMediaSource
+ * where available and falls back to native `video.src=` HLS on older iOS, so
  * HLS-first is safe everywhere without device-specific branching.
  */
 export const DEFAULT_SOURCE_ORDER: SourceContainer[] = ['hls', 'dash'];

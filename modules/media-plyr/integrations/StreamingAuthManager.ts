@@ -17,8 +17,12 @@ interface NetworkingEngineLike {
  * when a CDN/origin middleware validates JWTs or session cookies before
  * serving HLS/DASH payloads.
  *
- * Applies only on the MSE path — native HLS on iOS Safari bypasses Shaka's
- * networking stack, so header-based auth won't run there.
+ * Runs only when Shaka fetches manifests/segments itself (MSE or
+ * ManagedMediaSource). When Shaka uses native `video.src` HLS — e.g. iPhone
+ * on iOS < 17.1, or FairPlay with `useNativeHlsForFairPlay: true`, or
+ * `preferNativeHls: true` — Safari handles fetches and this filter is not
+ * invoked. On iOS 17.1+ with clear HLS, Shaka v5 prefers MSE by default so
+ * filters typically apply.
  *
  * Must be applied before `player.load()`. Re-call `apply()` when the token
  * or headers change (e.g. after `loadSource()` with refreshed config).

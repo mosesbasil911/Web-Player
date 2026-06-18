@@ -1032,6 +1032,22 @@
   transform: translateX(2px);
 }
 
+.media-plyr-audio__lyrics-line--clickable {
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 0 -8px;
+  padding: 6px 8px;
+}
+
+.media-plyr-audio__lyrics-line--clickable:hover {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.media-plyr-audio__lyrics-line--clickable:focus-visible {
+  outline: 2px solid var(--plyr-accent, #aa3bff);
+  outline-offset: 2px;
+}
+
 .media-plyr-audio__lyrics-line-text {
   display: block;
 }

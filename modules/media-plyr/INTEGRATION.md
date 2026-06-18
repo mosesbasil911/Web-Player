@@ -11,7 +11,7 @@ media-plyr is a TypeScript media player built on [Shaka Player](https://github.c
 | HLS (`.m3u8`) | Progressive MP4 |
 | DASH (`.mpd`) | WebM, MP3, etc. |
 
-Tested on modern Chrome, Edge, Firefox, and Safari. On iOS Safari, provide an HLS manifest — Shaka falls back to native playback when MSE is restricted.
+Tested on modern Chrome, Edge, Firefox, and Safari. On iPhone, always provide HLS — Shaka uses ManagedMediaSource (MSE) on iOS 17.1+ where available and falls back to native HLS on older versions.
 
 ---
 
@@ -189,9 +189,9 @@ sources: [
 ];
 ```
 
-If both are provided, HLS is preferred by default. On iOS Safari, **always include HLS** — DASH-only will likely fail because Shaka needs HLS to fall back to native `video.src` playback.
+If both are provided, HLS is preferred by default. On iPhone (iOS < 17.1), **always include HLS** — only native HLS playback is available there. On iOS 17.1+, Shaka can use ManagedMediaSource for clear HLS and DASH; HLS remains the safe fallback for all iOS versions.
 
-> **Warning:** Setting `preferredOrder: ['dash', 'hls']` on iOS Safari is unsupported and will likely cause playback failure.
+> **Warning:** Setting `preferredOrder: ['dash', 'hls']` on iPhone (iOS < 17.1) is unsupported and will likely cause playback failure.
 
 ### CMS / encoder payloads
 
@@ -230,6 +230,41 @@ subtitles: [
 ```
 
 For caption visibility, call `player.setTextVisible(true)` and `player.selectTextTrack(id)`. If you import `styles/media-plyr.css`, caption show/hide is driven by a `data-captions-off` attribute on the video container.
+
+### Audio lyrics
+
+Timed lyrics for audio tracks are separate from subtitles — they use a dedicated
+WebVTT file and a karaoke-style scrolling panel in `AudioPlayer`.
+
+```typescript
+const playlist: MediaTrack[] = [
+  {
+    kind: 'audio',
+    sources: [{ container: 'hls', url: 'https://cdn.example.com/track.m3u8' }],
+    title: 'My Song',
+    artist: 'Artist Name',
+    lyrics: {
+      src: 'https://cdn.example.com/lyrics.vtt',
+      language: 'en',
+      label: 'English',
+    },
+  },
+];
+```
+
+Each cue in the WebVTT file becomes a lyric line; the active line is
+highlighted and scrolled into view during playback. Lines are clickable in
+`AudioPlayer` — clicking a line seeks to that cue's start time. The lyrics
+button only appears when the current track has a `lyrics` entry.
+
+In the React `AudioPlayer`, pass `lyrics` on individual `MediaTrack` entries
+in the playlist. For a custom UI, fetch and parse the VTT with
+`parseVtt()` from `utils/parseVtt.ts`, or reuse `LyricsPanel` with an
+`onLineClick` callback that calls `player.seek(time)`.
+
+> **Note:** `LyricsPanel` fetches the VTT URL directly (not through Shaka).
+> If your lyrics files require auth, host them on the same origin, use signed
+> URLs, or extend the fetch in your own UI.
 
 ### DRM
 
@@ -314,23 +349,63 @@ status badge, and content controls hide while a linear ad plays.
 To wire ads into a custom (non-React) UI, use `AdsManager` directly — see
 [AdsManager](#adsmanager--google-ima-ads) below.
 
-### Streaming / ABR
+### Streaming
+
+Buffering, low-latency, and **authorization** for manifest/segment requests.
 
 ```typescript
 streaming: {
   lowLatencyMode: true,   // for LL-HLS / LL-DASH live streams
   bufferingGoal: 30,
   rebufferingGoal: 2,
-  // Optional: JWT or session token for manifest/segment requests. Applied via
-  // Shaka's networking-engine request filter (MSE path only — not native iOS HLS).
+  // Auth token for manifest/segment requests (when Shaka fetches them).
   requestHeaders: {
     Authorization: 'Bearer <token>',
   },
-  // Optional: send cookies / HTTP auth on cross-origin manifest/segment requests.
+  // Send cookies / HTTP auth on cross-origin manifest/segment requests.
   withCredentials: true,
+  // Apple HLS playback mode (Shaka v5 defaults shown):
+  preferNativeHls: false,           // true = force native HLS (e.g. for AirPlay)
+  useNativeHlsForFairPlay: true,    // false = attempt FairPlay over MSE/EME
 },
+```
+
+#### Authorization and platform behavior
+
+Auth for stream fetches is configured under **`streaming`** (manifest/segments)
+and **`drm`** (license requests). **`abr`** is quality-selection only — it
+does not carry tokens.
+
+| Request type        | Config key                  | When headers apply                                 |
+| ------------------- | --------------------------- | -------------------------------------------------- |
+| Manifest / segments | `streaming.requestHeaders`  | When Shaka fetches (MSE / ManagedMediaSource path) |
+| License (DRM)       | `drm.licenseRequestHeaders` | License requests via Shaka networking engine       |
+| ABR quality caps    | `abr.restrictions`          | Never — no HTTP involved                           |
+
+**When Shaka fetches (headers work):** Chrome, Firefox, desktop Safari, Android,
+iOS 17.1+ clear HLS (ManagedMediaSource, Shaka v5 default), DASH on MSE-capable
+platforms.
+
+**When native HLS is used (headers do not apply to segments):** iPhone on
+iOS < 17.1; FairPlay with `useNativeHlsForFairPlay: true` (default); any
+platform with `preferNativeHls: true`.
+
+For auth on **every** segment request across all platforms (including native
+iOS and Chromecast), use **signed manifest URLs** or **cookie/session auth**
+(`withCredentials` + correct CORS) from your API/CDN — not header injection
+alone.
+
+Re-call `loadSource()` with refreshed headers when tokens expire.
+
+### ABR
+
+Adaptive bitrate controls — which quality rung to pick based on bandwidth and
+buffer health. **No auth/token fields**; this is playback policy only.
+
+```typescript
 abr: {
   enabled: true,
+  defaultBandwidthEstimate: 800000,
   restrictions: { maxHeight: 1080 },
 }
 ```
@@ -553,6 +628,10 @@ if (CastManager.isSupported()) {
 ```
 
 Cast is Chrome-only (not Edge). Pass `cast` in `MediaPlyrConfig` if you want the config available to the manager, but Cast is wired separately via `CastManager`.
+
+**Auth on Cast:** the receiver device fetches the manifest URL independently —
+Shaka request filters do not run on the TV. Use signed manifest URLs or a custom
+Cast receiver that attaches tokens server-side.
 
 ### AirPlayManager — Apple AirPlay
 

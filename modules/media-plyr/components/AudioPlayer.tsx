@@ -538,6 +538,12 @@ export function AudioPlayer({
     },
     [queue],
   );
+  const handleLyricsLineClick = useCallback(
+    (time: number) => {
+      player?.seek(time);
+    },
+    [player],
+  );
 
   const hasFatalError = error?.severity === 'fatal';
 
@@ -763,6 +769,7 @@ export function AudioPlayer({
           lyrics={currentTrack?.lyrics ?? null}
           currentTime={state.currentTime}
           visible={lyricsOpen}
+          onLineClick={handleLyricsLineClick}
         />
 
         {/* Loading indicator */}
