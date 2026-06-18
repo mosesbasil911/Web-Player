@@ -293,6 +293,8 @@ export function AudioPlayer({
   // We keep a single MediaSessionManager per player and update its metadata
   // when the current track changes.
   const sessionRef = useRef<MediaSessionManager | null>(null);
+  const currentTrackRef = useRef(currentTrack);
+  currentTrackRef.current = currentTrack;
   const queueRef = useRef(queue);
   queueRef.current = queue;
   const stateRef = useRef(state);
@@ -317,8 +319,12 @@ export function AudioPlayer({
     if (!session.isSupported()) return;
     session.bindActionHandlers();
     session.startPositionUpdates();
+    session.setMetadataFromTrack(currentTrackRef.current);
 
-    const handlePlay = () => session.setPlaybackState('playing');
+    const handlePlay = () => {
+      session.setPlaybackState('playing');
+      session.setMetadataFromTrack(currentTrackRef.current);
+    };
     const handlePause = () => session.setPlaybackState('paused');
     const handleEndedSession = () => session.setPlaybackState('paused');
     player.on('play', handlePlay);
@@ -336,7 +342,7 @@ export function AudioPlayer({
 
   useEffect(() => {
     sessionRef.current?.setMetadataFromTrack(currentTrack);
-  }, [currentTrack]);
+  }, [player, currentTrack]);
 
   // ---------------------------------------------------------------------
   // Pre-buffering + crossfade

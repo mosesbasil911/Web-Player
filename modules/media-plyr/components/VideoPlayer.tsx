@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMediaPlyr } from '../hooks/useMediaPlyr.ts';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts.ts';
 import { useGlobalMute } from '../hooks/useGlobalMute.ts';
 import { PlaybackMemory } from '../core/PlaybackMemory.ts';
+import { MediaSessionManager } from '../integrations/MediaSessionManager.ts';
 import { ControlBar } from './controls/ControlBar.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
 import { BufferingOverlay } from './overlays/BufferingOverlay.tsx';
@@ -70,6 +71,62 @@ export function VideoPlayer({
       onReady(player);
     }
   }, [player, onReady]);
+
+  const sessionRef = useRef<MediaSessionManager | null>(null);
+  const sessionMetadataRef = useRef({
+    title: config.title,
+    poster: config.poster,
+  });
+
+  useEffect(() => {
+    if (!player) return;
+
+    const session = new MediaSessionManager(player, {
+      onPrev: hasPrev ? onPrev : undefined,
+      onNext: hasNext ? onNext : undefined,
+    });
+    sessionRef.current = session;
+
+    if (!session.isSupported()) return;
+
+    const applyMetadata = () => {
+      session.setMetadata({
+        title: sessionMetadataRef.current.title ?? 'Video',
+        artwork: sessionMetadataRef.current.poster,
+      });
+    };
+
+    session.bindActionHandlers();
+    session.startPositionUpdates();
+    applyMetadata();
+
+    const handlePlay = () => {
+      session.setPlaybackState('playing');
+      applyMetadata();
+    };
+    const handlePause = () => session.setPlaybackState('paused');
+    const handleEnded = () => session.setPlaybackState('paused');
+
+    player.on('play', handlePlay);
+    player.on('pause', handlePause);
+    player.on('ended', handleEnded);
+
+    return () => {
+      player.off('play', handlePlay);
+      player.off('pause', handlePause);
+      player.off('ended', handleEnded);
+      session.destroy();
+      sessionRef.current = null;
+    };
+  }, [player, hasPrev, hasNext, onPrev, onNext]);
+
+  useEffect(() => {
+    sessionMetadataRef.current = { title: config.title, poster: config.poster };
+    sessionRef.current?.setMetadata({
+      title: config.title ?? 'Video',
+      artwork: config.poster,
+    });
+  }, [player, config.title, config.poster]);
 
   useEffect(() => {
     if (error?.severity === 'fatal' && onError) {
