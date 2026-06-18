@@ -35,7 +35,7 @@ export function CastButton({
     'NO_DEVICES_AVAILABLE',
   );
   const [deviceName, setDeviceName] = useState<string | null>(null);
-  const [supported, setSupported] = useState(() => CastManager.isSupported());
+  const [supported] = useState(() => CastManager.isSupported());
 
   useEffect(() => {
     if (!player || !supported) return;
@@ -51,11 +51,7 @@ export function CastButton({
 
     mgr.on('caststate', handler);
 
-    mgr.init().then(() => {
-      if (!CastManager.isSupported()) {
-        setSupported(false);
-      }
-    });
+    mgr.init();
 
     return () => {
       mgr.destroy();
@@ -90,21 +86,26 @@ export function CastButton({
     }
   }, [connectionState]);
 
+  const alwaysShow = castConfig?.alwaysShowButton !== false;
+
   if (!supported) return null;
-  if (connectionState === 'NO_DEVICES_AVAILABLE') return null;
+  if (!alwaysShow && connectionState === 'NO_DEVICES_AVAILABLE') return null;
 
   const connected = connectionState === 'CONNECTED';
   const connecting = connectionState === 'CONNECTING';
+  const noDevices = connectionState === 'NO_DEVICES_AVAILABLE';
 
   const label = connected
     ? `Casting to ${deviceName ?? 'device'}`
     : connecting
       ? 'Connecting…'
-      : 'Cast';
+      : noDevices
+        ? 'Cast — no devices found'
+        : 'Cast';
 
   return (
     <button
-      className={`media-plyr__btn media-plyr__btn--cast${connected ? ' media-plyr__btn--active' : ''}${connecting ? ' media-plyr__btn--cast-connecting' : ''}`}
+      className={`media-plyr__btn media-plyr__btn--cast${connected ? ' media-plyr__btn--active' : ''}${connecting ? ' media-plyr__btn--cast-connecting' : ''}${noDevices ? ' media-plyr__btn--cast-idle' : ''}`}
       onClick={handleClick}
       aria-label={label}
       title={label}

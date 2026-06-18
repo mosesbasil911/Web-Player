@@ -18,8 +18,8 @@ interface WebKitPlaybackTargetAvailabilityEvent extends Event {
 /**
  * Apple AirPlay sender integration.
  *
- * Unlike Chromecast, AirPlay streams the local `<video>` element directly to
- * the AirPlay target — the browser handles all media routing and proxying of
+ * Unlike Chromecast, AirPlay streams the local `<video>` or `<audio>` element
+ * directly to the AirPlay target — the browser handles all media routing and
  * playback commands. There is no separate SDK to load, no remote media
  * session to manage, and no playback commands to proxy.
  *

@@ -181,8 +181,9 @@ export class CastManager {
 
     if (!CastManager.isSupported()) return;
 
-    await this.loadSdk();
+    const available = await this.loadSdk();
     if (this.destroyed) return;
+    if (!available) return;
 
     this.framework = getCastFramework();
     if (!this.framework) return;
@@ -192,8 +193,8 @@ export class CastManager {
     const chromeNs = getChromeNamespace();
     const autoJoinPolicy =
       this.config.autoJoinPolicy ??
-      chromeNs?.cast.AutoJoinPolicy.ORIGIN_SCOPED ??
-      'origin_scoped';
+      chromeNs?.cast.AutoJoinPolicy.PAGE_SCOPED ??
+      'page_scoped';
 
     this.castContext.setOptions({
       receiverApplicationId:
@@ -209,6 +210,19 @@ export class CastManager {
 
     this.bindCastEvents();
     this.syncCastState();
+
+    // Shaka sets disableRemotePlayback=true on the element when it opens a
+    // ManagedMediaSource so Chrome doesn't try to relay the internal blob://
+    // URL to a Cast receiver. We restore it to false here because we manage
+    // the Cast session ourselves — loadMediaOnReceiver() sends the real
+    // manifest URL, not the blob. Without this Chrome's Remote Playback API
+    // suppresses Cast device discovery and the "Cast to a device" section in
+    // the Global Media Controls panel shows no devices.
+    const el = this.player.videoElement;
+    if (el) {
+      el.disableRemotePlayback = false;
+    }
+
     this.initialized = true;
   }
 
@@ -364,6 +378,12 @@ export class CastManager {
       }
     }
 
+    // Hand disableRemotePlayback back to Shaka/the browser default.
+    const el = this.player.videoElement;
+    if (el) {
+      el.disableRemotePlayback = true;
+    }
+
     this.emitter.removeAllListeners();
     this.castContext = null;
     this.remotePlayer = null;
@@ -375,10 +395,17 @@ export class CastManager {
   // Private
   // ---------------------------------------------------------------------------
 
-  private loadSdk(): Promise<void> {
-    return new Promise<void>((resolve) => {
+  /**
+   * Returns `true` when the Cast SDK loaded and confirmed availability via
+   * `__onGCastApiAvailable(true)`. Returns `false` when the SDK is absent,
+   * blocked, or explicitly reports Cast is unavailable — in which case
+   * `init()` skips context setup so `requestSession()` stays a no-op and
+   * Chrome's built-in media panel is never inadvertently opened.
+   */
+  private loadSdk(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
       if (getCastFramework()) {
-        resolve();
+        resolve(true);
         return;
       }
 
@@ -388,11 +415,9 @@ export class CastManager {
         | ((available: boolean) => void)
         | undefined;
 
-      w.__onGCastApiAvailable = (
-        available: boolean,
-      ) => {
+      w.__onGCastApiAvailable = (available: boolean) => {
         existingCallback?.(available);
-        resolve();
+        resolve(available);
       };
 
       if (document.querySelector(`script[src*="cast_sender.js"]`)) {
@@ -406,7 +431,7 @@ export class CastManager {
       script.async = true;
       script.onerror = () => {
         console.warn('[mediaPlyr] Failed to load Cast SDK');
-        resolve();
+        resolve(false);
       };
       document.head.appendChild(script);
     });
@@ -472,10 +497,13 @@ export class CastManager {
   }
 
   private getActiveSources(): Array<{ url: string; mimeType?: string }> {
+    // Prefer the Shaka-tracked manifest URI over el.currentSrc. When Shaka
+    // buffers via MSE the element src is a blob:// URL that only lives in the
+    // local browser tab — the Cast receiver is a separate device and cannot
+    // fetch it. getManifestUri() returns the real .m3u8 / .mpd URL.
+    const manifestUri = this.player.getManifestUri();
     const el = this.player.videoElement;
-    if (!el) return [];
-
-    const src = el.currentSrc || el.src;
+    const src = manifestUri || (el ? (el.currentSrc || el.src) : null);
     if (!src) return [];
 
     let mimeType: string | undefined;

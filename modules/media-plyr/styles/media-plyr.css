@@ -634,6 +634,14 @@
 }
 
 /* ---- Cast Button ---- */
+.media-plyr__btn--cast-idle {
+  opacity: 0.55;
+}
+
+.media-plyr__btn--cast-idle:hover {
+  opacity: 0.85;
+}
+
 .media-plyr__btn--cast-connecting {
   animation: media-plyr-cast-pulse 1.5s ease-in-out infinite;
 }
@@ -646,6 +654,15 @@
   50% {
     opacity: 0.4;
   }
+}
+
+/* ---- AirPlay Button ---- */
+.media-plyr__btn--airplay-idle {
+  opacity: 0.55;
+}
+
+.media-plyr__btn--airplay-idle:hover {
+  opacity: 0.85;
 }
 
 /* Compact: hide secondary controls */

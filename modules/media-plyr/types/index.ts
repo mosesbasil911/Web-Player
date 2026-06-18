@@ -168,6 +168,12 @@ export interface CastConfig {
   receiverApplicationId?: string;
   autoJoinPolicy?: string;
   language?: string;
+  /**
+   * Show the Cast button in Chrome even when no receivers have been discovered
+   * yet. Clicking opens Google's device picker (same pattern as major streaming
+   * apps). Defaults to `true`; set `false` to hide until a device is available.
+   */
+  alwaysShowButton?: boolean;
 }
 
 export interface CastStateEvent {
@@ -481,6 +487,16 @@ export interface MediaPlyrInstance {
   destroy(): void;
 
   getPlaybackState(): PlaybackState;
+
+  /**
+   * The URI of the currently-loaded manifest (`.m3u8` or `.mpd`), as tracked
+   * by Shaka internally. Returns `null` when nothing is loaded yet.
+   *
+   * Use this instead of `videoElement.currentSrc` for Cast/remote-playback —
+   * when Shaka buffers via MSE the element src is a `blob://` URL that only
+   * exists in the local tab and cannot be fetched by a Cast receiver.
+   */
+  getManifestUri(): string | null;
 
   /** Available subtitle/caption tracks. Empty until the manifest has loaded. */
   getTextTracks(): TextTrackInfo[];
