@@ -7,6 +7,8 @@ interface LyricsPanelProps {
   currentTime: number;
   /** Toggled by the parent (queue panel button etc.). */
   visible: boolean;
+  /** When set, lyric lines are clickable and seek to the cue start time. */
+  onLineClick?: (time: number) => void;
 }
 
 /**
@@ -40,10 +42,20 @@ function findActiveCue(cues: VttCue[], time: number): number {
   return -1;
 }
 
+function lineAriaLabel(text: string, time: number): string {
+  const preview = text.replace(/\s+/g, ' ').trim().slice(0, 80);
+  const mins = Math.floor(time / 60);
+  const secs = Math.floor(time % 60)
+    .toString()
+    .padStart(2, '0');
+  return `Jump to ${mins}:${secs} — ${preview}`;
+}
+
 export function LyricsPanel({
   lyrics,
   currentTime,
   visible,
+  onLineClick,
 }: LyricsPanelProps) {
   const [cues, setCues] = useState<VttCue[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +149,7 @@ export function LyricsPanel({
           {cues.map((cue, i) => {
             const isActive = i === activeIndex;
             const isPast = activeIndex >= 0 && i < activeIndex;
+            const clickable = !!onLineClick;
             return (
               <li
                 key={cue.index}
@@ -144,10 +157,29 @@ export function LyricsPanel({
                   'media-plyr-audio__lyrics-line',
                   isActive ? 'media-plyr-audio__lyrics-line--active' : '',
                   isPast ? 'media-plyr-audio__lyrics-line--past' : '',
+                  clickable ? 'media-plyr-audio__lyrics-line--clickable' : '',
                 ]
                   .filter(Boolean)
                   .join(' ')}
                 aria-current={isActive ? 'true' : undefined}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                aria-label={
+                  clickable ? lineAriaLabel(cue.text, cue.startTime) : undefined
+                }
+                onClick={
+                  clickable ? () => onLineClick(cue.startTime) : undefined
+                }
+                onKeyDown={
+                  clickable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          onLineClick(cue.startTime);
+                        }
+                      }
+                    : undefined
+                }
               >
                 {cue.text.split('\n').map((part, j) => (
                   <span key={j} className="media-plyr-audio__lyrics-line-text">

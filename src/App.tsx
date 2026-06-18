@@ -22,6 +22,8 @@ const CAST_CONFIG = {
   receiverApplicationId: 'CC1AD845',
 };
 
+const DEMO_LYRICS_URL = 'demo/sade-lyrics.vtt';
+
 // Google's public IMA sample ad tags (https://developers.google.com/ima).
 // VMAP schedules pre-roll, mid-roll, and post-roll in a single response.
 const SAMPLE_VMAP_TAG =
@@ -152,13 +154,19 @@ const AUDIO_PLAYLIST: MediaTrack[] = [
     sources: [
       {
         container: 'hls',
-        url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_59f661d849_r8kqv6.m3u8',
+        // url: 'https://res.cloudinary.com/dqgupihre/video/upload/audio_59f661d849_r8kqv6.m3u8',
+        url: 'https://res.cloudinary.com/dqgupihre/video/upload/Nothing_Can_Come_Between_Us_gnrakv.m3u8',
       },
     ],
-    title: 'Design aesthetics',
-    artist: 'MusicWord',
+    title: 'Nothing Can Come Between Us',
+    artist: 'Sade',
     artwork:
       'https://t4.ftcdn.net/jpg/03/10/69/39/240_F_310693986_tGNIg4QkdTYC52Yb8yOAd3kzT8QivNUf.jpg',
+    lyrics: {
+      src: DEMO_LYRICS_URL,
+      language: 'en',
+      label: 'English',
+    },
   },
   {
     kind: 'audio',
@@ -495,7 +503,8 @@ function App() {
               <span className="source-picker__hint">
                 Pre-buffers the next track and ramps volumes during the
                 transition. Requires VOD audio (radio streams have no fixed
-                duration so the trigger never fires).
+                duration so the trigger never fires). The first track includes
+                timed lyrics — open the lyrics panel in the player controls.
               </span>
             </div>
 

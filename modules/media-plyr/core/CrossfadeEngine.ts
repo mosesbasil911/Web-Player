@@ -1,4 +1,5 @@
 import shaka from 'shaka-player';
+import { configureShakaStreaming } from '../utils/configureShakaStreaming.ts';
 import { orderSources } from '../utils/orderSources.ts';
 import { StreamingAuthManager } from '../integrations/StreamingAuthManager.ts';
 import type { MediaPlyrConfig, MediaSource } from '../types/index.ts';
@@ -65,6 +66,7 @@ export class CrossfadeEngine {
       }
     }
 
+    configureShakaStreaming(this.player, config.streaming);
     this.configureStreamingAuth(config);
 
     this.element.pause();

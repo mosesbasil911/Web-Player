@@ -243,7 +243,9 @@ export interface StreamingConfig {
    * Extra HTTP headers attached to manifest and segment requests. Use for
    * authorization tokens your CDN/origin requires (e.g.
    * `{ Authorization: 'Bearer …' }`). Applied via Shaka's networking-engine
-   * request filter on the MSE path — not invoked for native HLS on iOS Safari.
+   * request filter when Shaka fetches manifests/segments (MSE / ManagedMediaSource
+   * path). Not invoked when Shaka delegates to native `video.src` HLS (e.g. iOS
+   * < 17.1, or FairPlay with `useNativeHlsForFairPlay: true`).
    */
   requestHeaders?: Record<string, string>;
   /**
@@ -251,6 +253,18 @@ export interface StreamingConfig {
    * segment requests. Defaults to `false`.
    */
   withCredentials?: boolean;
+  /**
+   * Prefer native HLS playback when the browser supports it, regardless of
+   * platform. Shaka default is `false`. Set `true` to force native HLS on
+   * Apple (e.g. for AirPlay); segment request filters will not run on that path.
+   */
+  preferNativeHls?: boolean;
+  /**
+   * Use Apple's native HLS player for FairPlay-protected streams on Apple
+   * platforms. Shaka default is `true`. Set `false` to attempt FairPlay over
+   * MSE/EME (requires provider support; see Shaka's FairPlay tutorial).
+   */
+  useNativeHlsForFairPlay?: boolean;
 }
 
 export interface PlaybackMemoryConfig {
@@ -288,10 +302,9 @@ export interface MediaPlyrConfig {
   /**
    * Override the manifest selection order. Defaults to `['hls', 'dash']`.
    *
-   * **iOS Safari warning:** passing `['dash', 'hls']` on iOS Safari is
-   * unsupported. Shaka requires an HLS manifest to fall back to native
-   * `video.src=` playback when MSE is restricted — DASH-first will likely
-   * cause playback failure on that platform.
+   * **iOS warning:** passing `['dash', 'hls']` on iPhone (iOS < 17.1) is
+   * unsupported — only native HLS works there. Always include an HLS manifest;
+   * DASH-first will likely fail on older iPhones.
    */
   preferredOrder?: SourceContainer[];
   crossOrigin?: 'anonymous' | 'use-credentials';
