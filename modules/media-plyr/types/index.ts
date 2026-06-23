@@ -405,6 +405,7 @@ export type MediaPlyrEventType =
   | 'queuechange'
   | 'repeat'
   | 'shuffle'
+  | 'loopchange'
   | 'mute'
   | 'caststate'
   | 'airplaystate'
@@ -477,6 +478,8 @@ export interface MediaPlyrInstance {
   seek(time: number): void;
   seekForward(seconds?: number): void;
   seekBackward(seconds?: number): void;
+  setLoop(enabled: boolean): void;
+  isLoop(): boolean;
   setVolume(volume: number): void;
   setMuted(muted: boolean): void;
   setPlaybackRate(rate: PlaybackSpeed): void;

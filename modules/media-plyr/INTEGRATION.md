@@ -112,6 +112,9 @@ seekBar.addEventListener('input', (e) => {
 volumeSlider.addEventListener('input', (e) => {
   player.setVolume(Number((e.target as HTMLInputElement).value));
 });
+loopBtn.addEventListener('click', () => {
+  player.setLoop(!player.isLoop());
+});
 ```
 
 ### 5. Clean up on teardown
@@ -177,6 +180,10 @@ interface MediaPlyrConfig {
   subtitles?: SubtitleTrack[];
 }
 ```
+
+`loop?: boolean` — when `true`, the player automatically restarts the **current
+manifest** from the beginning when playback reaches the end. Toggle at runtime
+with `setLoop()` / `isLoop()`. See [Loop](#loop) below.
 
 ### Sources
 
@@ -422,6 +429,10 @@ abr: {
 | `pause()`                     | Pause playback                                                                                                                                    |
 | `stop()`                      | Pause and seek to 0                                                                                                                               |
 | `seek(time)`                  | Seek to position in seconds                                                                                                                       |
+| `seekForward(seconds?)`       | Seek forward by `seconds` (defaults to `config.seekStep` or 5)                                                                                    |
+| `seekBackward(seconds?)`      | Seek backward by `seconds` (defaults to `config.seekStep` or 5)                                                                                   |
+| `setLoop(bool)`               | Enable / disable looping the current manifest on end                                                                                              |
+| `isLoop()`                    | Whether loop is enabled                                                                                                                           |
 | `setVolume(0–1)`              | Set volume                                                                                                                                        |
 | `setMuted(bool)`              | Mute / unmute                                                                                                                                     |
 | `setPlaybackRate(rate)`       | Set speed (0.25 – 2)                                                                                                                              |
@@ -461,8 +472,51 @@ abr: {
 | `texttrackchange`  | Subtitle tracks changed                 | `TextTrackChangeEvent`    |
 | `metadata`         | Timed metadata (e.g. ID3)               | `MediaMetadataEvent`      |
 | `mute`             | Mute toggled via `setMuted`             | `{ muted: boolean }`      |
+| `loopchange`       | Loop toggled via `setLoop`              | `{ loop: boolean }`       |
 
-Queue, repeat, shuffle, cast, ad, and offline events are emitted by their respective manager classes (see below).
+Queue, shuffle, cast, ad, and offline events are emitted by their respective manager classes (see below). Playlist-level repeat (`all`) is handled by `QueueManager`; single-item loop is on the core player (`setLoop`).
+
+### Loop
+
+Loop restarts the **currently loaded manifest** when playback reaches the end
+(`seek(0)` then `play()`). It applies to a single asset — not a multi-track
+playlist.
+
+**Video (single asset):** pass `loop: true` in config or call `setLoop(true)`.
+The reference `VideoPlayer` exposes a loop on/off toggle wired to these APIs.
+
+**Audio (playlists):** use `QueueManager` for playlist navigation and repeat
+modes (`none` | `one` | `all`). When repeat is `'one'`, call
+`player.setLoop(true)` so the core player restarts the current track; when
+repeat is `'all'` or `'none'`, call `player.setLoop(false)` and let the queue
+advance on `'ended'` via `queue.next()`.
+
+```typescript
+// Single video — loop on
+const player = new MediaPlyr({
+  kind: 'video',
+  sources: [{ container: 'hls', url: 'https://example.com/movie.m3u8' }],
+  title: 'My Video',
+  loop: true,
+});
+await player.attach(video);
+
+// Toggle at runtime
+player.setLoop(!player.isLoop());
+player.on('loopchange', (data) => {
+  const { loop } = data as { loop: boolean };
+  updateLoopButton(loop);
+});
+```
+
+**`loadSource()` and loop state:** `loadSource()` only updates loop from
+`config.loop` when that property is **explicitly set** on the incoming config.
+Otherwise the runtime value from `setLoop()` is preserved across track changes.
+Pass `loop: true | false` in config when you want each `loadSource()` call to
+reset loop (as the reference `VideoPlayer` does).
+
+> **Note:** Loop and post-roll ads both react to content `'ended'`. Avoid
+> enabling loop when VMAP/manual post-roll ads should play after the video.
 
 ### Ad events (`AdsManager`)
 
@@ -823,7 +877,9 @@ Skip playback when `isIncomplete` is true — delete and re-download instead. St
 
 ### QueueManager — playlist navigation
 
-Framework-agnostic queue with repeat/shuffle support.
+Framework-agnostic queue with repeat/shuffle support for **multi-track**
+playlists. Repeat mode `'all'` wraps the playlist index; `'one'` keeps the
+current index and delegates track restart to `player.setLoop(true)`.
 
 ```typescript
 import { QueueManager } from './media-plyr/core/QueueManager.ts';
@@ -838,13 +894,27 @@ queue.on('trackchange', async ({ track }) => {
     title: track.title,
     subtitles: track.subtitles,
   });
+  // Re-apply repeat-one loop after each track load (loadSource does not
+  // reset loop unless config.loop is explicitly set).
+  player.setLoop(queue.getRepeat() === 'one');
+});
+
+player.on('ended', () => {
+  if (queue.getRepeat() === 'one') return; // core player loops the track
+  queue.next();
 });
 
 nextBtn.addEventListener('click', () => queue.next());
 prevBtn.addEventListener('click', () => queue.prev());
+repeatBtn.addEventListener('click', () => {
+  const modes = ['none', 'all', 'one'] as const;
+  const next = modes[(modes.indexOf(queue.getRepeat()) + 1) % modes.length];
+  queue.setRepeat(next);
+  player.setLoop(next === 'one');
+});
 ```
 
-Public API: `next()`, `prev()`, `skipTo(index)`, `hasNext()`, `hasPrev()`, `setTracks()`, `addTrack()`, `removeTrack()`, `setRepeat()`, `setShuffle()`, `getState()`, `getCurrentTrack()`.
+Public API: `next()`, `prev()`, `skipTo(index)`, `hasNext()`, `hasPrev()`, `setTracks()`, `addTrack()`, `removeTrack()`, `setRepeat()`, `getRepeat()`, `setShuffle()`, `getState()`, `getCurrentTrack()`.
 
 ### PlaybackMemory — resume position
 
@@ -1005,6 +1075,11 @@ const [offlineRequest, setOfflineRequest] = useState<OfflinePlayRequest | null>(
   }
 />;
 ```
+
+`VideoPlayer` includes a loop on/off control backed by `player.setLoop()`.
+Pass `loop: true` in config to start with loop enabled. `AudioPlayer` uses
+`QueueManager` for playlist repeat/shuffle; repeat-one delegates to
+`player.setLoop(true)`.
 
 `onReady` fires after `attach()` — the player is usable even if the first manifest load failed. `offlinePlayRequest` lets a parent trigger offline playback through `AudioPlayer`'s queue: the player jumps to the matching playlist entry and swaps in the `offline:` URI while keeping artwork and title in sync. Manual queue navigation (next/prev/skip) clears the offline override.
 

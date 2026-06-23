@@ -38,9 +38,11 @@ export class MediaPlyr implements MediaPlyrInstance {
    * on it and let CSS control the `.shaka-text-container` visibility.
    */
   private _textVisible = false;
+  private _loop = false;
 
   constructor(config: MediaPlyrConfig) {
     this.config = config;
+    this._loop = !!config.loop;
   }
 
   async attach(element: HTMLVideoElement | HTMLAudioElement): Promise<void> {
@@ -115,6 +117,9 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (this.destroyed || !this.player) return;
 
     this.config = config;
+    if (config.loop !== undefined) {
+      this._loop = config.loop;
+    }
     this._waiting = false;
     this.emitter.emit('loading');
 
@@ -193,6 +198,17 @@ export class MediaPlyr implements MediaPlyrInstance {
     if (!this.element) return;
     const step = seconds ?? this.config.seekStep ?? 5;
     this.seek(this.element.currentTime - step);
+  }
+
+  setLoop(enabled: boolean): void {
+    if (this._loop === enabled) return;
+    this._loop = enabled;
+    this.config.loop = enabled;
+    this.emitter.emit('loopchange', { loop: enabled });
+  }
+
+  isLoop(): boolean {
+    return this._loop;
   }
 
   setVolume(volume: number): void {
@@ -504,6 +520,14 @@ export class MediaPlyr implements MediaPlyrInstance {
     bind('ratechange', 'ratechange');
     bind('seeking', 'seeking');
     bind('seeked', 'seeked');
+
+    const loopHandler = () => {
+      if (!this._loop) return;
+      this.seek(0);
+      void this.play();
+    };
+    this.mediaEventHandlers.set('loop-ended', loopHandler);
+    this.element!.addEventListener('ended', loopHandler);
 
     const waitingHandler = () => {
       this._waiting = true;

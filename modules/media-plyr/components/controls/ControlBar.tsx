@@ -13,6 +13,7 @@ import { FullscreenButton } from './FullscreenButton.tsx';
 import { SpeedSelector } from './SpeedSelector.tsx';
 import { PrevNextButtons } from './PrevNextButtons.tsx';
 import { RepeatShuffleButtons } from './RepeatShuffleButtons.tsx';
+import { LoopButton } from './LoopButton.tsx';
 import { PipButton } from './PipButton.tsx';
 import { CaptionButton } from './CaptionButton.tsx';
 import { CastButton } from './CastButton.tsx';
@@ -32,6 +33,9 @@ export interface ControlBarProps {
   onRepeatChange?: (mode: RepeatMode) => void;
   onShuffleChange?: (shuffle: boolean) => void;
 
+  loop?: boolean;
+  onLoopChange?: (loop: boolean) => void;
+
   castConfig?: CastConfig;
 }
 
@@ -46,6 +50,8 @@ export function ControlBar({
   shuffle = false,
   onRepeatChange,
   onShuffleChange,
+  loop = false,
+  onLoopChange,
   castConfig,
 }: ControlBarProps) {
   return (
@@ -69,12 +75,16 @@ export function ControlBar({
         </div>
 
         <div className="media-plyr__controls-right">
-          <RepeatShuffleButtons
-            repeat={repeat}
-            shuffle={shuffle}
-            onRepeatChange={onRepeatChange}
-            onShuffleChange={onShuffleChange}
-          />
+          {onLoopChange ? (
+            <LoopButton loop={loop} onLoopChange={onLoopChange} />
+          ) : (
+            <RepeatShuffleButtons
+              repeat={repeat}
+              shuffle={shuffle}
+              onRepeatChange={onRepeatChange}
+              onShuffleChange={onShuffleChange}
+            />
+          )}
           <SpeedSelector player={player} state={state} />
           <CaptionButton player={player} />
           <CastButton player={player} state={state} castConfig={castConfig} />

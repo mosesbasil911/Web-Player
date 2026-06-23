@@ -244,6 +244,11 @@ export function AudioPlayer({
     return () => memory.detach();
   }, [player, memoryConfig, mediaId]);
 
+  useEffect(() => {
+    if (!player) return;
+    player.setLoop(queueState.repeat === 'one');
+  }, [player, queueState.repeat, queueState.currentIndex]);
+
   // Auto-advance on track end.
   //
   // `endedHandledRef` guards against a double-advance race during a crossfade
@@ -261,8 +266,6 @@ export function AudioPlayer({
       endedHandledRef.current = true;
 
       if (queueState.repeat === 'one') {
-        player.seek(0);
-        player.play();
         return;
       }
 
