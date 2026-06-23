@@ -8,7 +8,7 @@ import { ControlBar } from './controls/ControlBar.tsx';
 import { ErrorOverlay } from './overlays/ErrorOverlay.tsx';
 import { BufferingOverlay } from './overlays/BufferingOverlay.tsx';
 import { AdOverlay } from './overlays/AdOverlay.tsx';
-import type { VideoPlayerProps, RepeatMode } from '../types/index.ts';
+import type { VideoPlayerProps } from '../types/index.ts';
 import '../styles/media-plyr.css';
 
 export function VideoPlayer({
@@ -23,20 +23,25 @@ export function VideoPlayer({
 }: VideoPlayerProps) {
   const memoryConfig = config.playbackMemory;
   const mediaId = config.sources[0]?.url ?? config.title;
+  const [loop, setLoop] = useState(() => !!config.loop);
+  const [adActive, setAdActive] = useState(false);
 
   const resolvedConfig = useMemo(() => {
-    if (!memoryConfig?.enabled) return config;
+    let nextConfig = config;
 
-    const memory = new PlaybackMemory(memoryConfig);
-    const saved = memory.getSavedPosition(mediaId);
-    if (
-      saved !== null &&
-      (config.startTime === undefined || config.startTime === 0)
-    ) {
-      return { ...config, startTime: saved };
+    if (memoryConfig?.enabled) {
+      const memory = new PlaybackMemory(memoryConfig);
+      const saved = memory.getSavedPosition(mediaId);
+      if (
+        saved !== null &&
+        (config.startTime === undefined || config.startTime === 0)
+      ) {
+        nextConfig = { ...config, startTime: saved };
+      }
     }
-    return config;
-  }, [config, memoryConfig, mediaId]);
+
+    return { ...nextConfig, loop };
+  }, [config, memoryConfig, mediaId, loop]);
 
   const { ref, state, error, ready, player } = useMediaPlyr(resolvedConfig);
 
@@ -50,9 +55,10 @@ export function VideoPlayer({
     }
   }, [player, globalMuted, state.muted]);
 
-  const [repeat, setRepeat] = useState<RepeatMode>('none');
-  const [shuffle, setShuffle] = useState(false);
-  const [adActive, setAdActive] = useState(false);
+  useEffect(() => {
+    if (!player) return;
+    player.setLoop(loop);
+  }, [player, loop]);
 
   useEffect(() => {
     if (!memoryConfig?.enabled || !player?.videoElement) return;
@@ -105,7 +111,10 @@ export function VideoPlayer({
       applyMetadata();
     };
     const handlePause = () => session.setPlaybackState('paused');
-    const handleEnded = () => session.setPlaybackState('paused');
+    const handleEnded = () => {
+      if (player.isLoop()) return;
+      session.setPlaybackState('paused');
+    };
 
     player.on('play', handlePlay);
     player.on('pause', handlePause);
@@ -198,10 +207,8 @@ export function VideoPlayer({
             hasNext={hasNext}
             onPrev={onPrev}
             onNext={onNext}
-            repeat={repeat}
-            shuffle={shuffle}
-            onRepeatChange={setRepeat}
-            onShuffleChange={setShuffle}
+            loop={loop}
+            onLoopChange={setLoop}
             castConfig={config.cast}
           />
         )}
