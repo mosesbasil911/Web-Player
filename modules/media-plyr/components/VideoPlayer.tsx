@@ -50,9 +50,35 @@ export function VideoPlayer({
     }
   }, [player, globalMuted, state.muted]);
 
-  const [repeat, setRepeat] = useState<RepeatMode>('none');
+  const [repeat, setRepeat] = useState<RepeatMode>(() =>
+    config.loop ? 'one' : 'none',
+  );
   const [shuffle, setShuffle] = useState(false);
   const [adActive, setAdActive] = useState(false);
+
+  useEffect(() => {
+    if (!player) return;
+
+    const handleEnded = () => {
+      if (repeat === 'one') {
+        player.seek(0);
+        void player.play();
+        return;
+      }
+
+      if (repeat === 'all') {
+        if (onNext) {
+          onNext();
+          return;
+        }
+        player.seek(0);
+        void player.play();
+      }
+    };
+
+    player.on('ended', handleEnded);
+    return () => player.off('ended', handleEnded);
+  }, [player, repeat, onNext]);
 
   useEffect(() => {
     if (!memoryConfig?.enabled || !player?.videoElement) return;
