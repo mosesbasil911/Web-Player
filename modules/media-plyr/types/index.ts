@@ -319,6 +319,12 @@ export interface MediaPlyrConfig {
   loop?: boolean;
   volume?: number;
   startTime?: number;
+  /**
+   * Stop playback at this position (seconds). When combined with `loop: true`
+   * the player rewinds to `startTime` instead of pausing, creating a looping
+   * clip. Enforced via `timeupdate` — see note on `startTime` precision.
+   */
+  endTime?: number;
   playbackRate?: PlaybackSpeed;
 
   /**

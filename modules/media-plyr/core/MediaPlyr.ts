@@ -515,7 +515,29 @@ export class MediaPlyr implements MediaPlyrInstance {
     bind('play', 'play');
     bind('pause', 'pause');
     bind('ended', 'ended');
-    bind('timeupdate', 'timeupdate');
+
+    // timeupdate — enforce clip endTime when set, then re-emit the event.
+    // timeupdate fires ~4×/s so the boundary overshoot is ≤250 ms. For frame-accurate trimming, generate
+    // a server-side HLS clip and drop endTime entirely.
+    const timeupdateHandler = () => {
+      const { endTime, startTime } = this.config;
+      if (
+        endTime !== undefined &&
+        this.element &&
+        this.element.currentTime >= endTime
+      ) {
+        this.seek(startTime ?? 0);
+        if (this._loop) {
+          void this.play();
+        } else {
+          this.element.pause();
+        }
+      }
+      this.emitter.emit('timeupdate', this.getPlaybackState());
+    };
+    this.mediaEventHandlers.set('timeupdate', timeupdateHandler);
+    this.element!.addEventListener('timeupdate', timeupdateHandler);
+
     bind('volumechange', 'volumechange');
     bind('ratechange', 'ratechange');
     bind('seeking', 'seeking');
@@ -523,7 +545,7 @@ export class MediaPlyr implements MediaPlyrInstance {
 
     const loopHandler = () => {
       if (!this._loop) return;
-      this.seek(0);
+      this.seek(this.config.startTime ?? 0);
       void this.play();
     };
     this.mediaEventHandlers.set('loop-ended', loopHandler);
