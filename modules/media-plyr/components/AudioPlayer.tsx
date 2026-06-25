@@ -49,6 +49,26 @@ function buildConfigFromTrack(
   };
 }
 
+/** Parent config fields that apply to every track in the playlist. */
+function sharedPlayerOptions(
+  config: MediaPlyrConfig,
+): Partial<MediaPlyrConfig> {
+  return {
+    volume: config.volume,
+    muted: config.muted,
+    crossOrigin: config.crossOrigin,
+    playbackMemory: config.playbackMemory,
+    abr: config.abr,
+    streaming: config.streaming,
+    preferredOrder: config.preferredOrder,
+    crossfade: config.crossfade,
+    cast: config.cast,
+    startTime: config.startTime,
+    endTime: config.endTime,
+    loop: config.loop,
+  };
+}
+
 export function AudioPlayer({
   config,
   playlist,
@@ -107,15 +127,7 @@ export function AudioPlayer({
     if (!currentTrack) return config;
     return buildConfigFromTrack(currentTrack, {
       autoplay: hasNavigatedRef.current,
-      volume: config.volume,
-      muted: config.muted,
-      crossOrigin: config.crossOrigin,
-      playbackMemory: config.playbackMemory,
-      abr: config.abr,
-      streaming: config.streaming,
-      preferredOrder: config.preferredOrder,
-      crossfade: config.crossfade,
-      cast: config.cast,
+      ...sharedPlayerOptions(config),
     });
     // queueState.currentIndex drives recomputation when the track changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -374,10 +386,7 @@ export function AudioPlayer({
     if (!nextTrack) return null;
     return buildConfigFromTrack(nextTrack, {
       autoplay: false,
-      crossOrigin: config.crossOrigin,
-      preferredOrder: config.preferredOrder,
-      abr: config.abr,
-      streaming: config.streaming,
+      ...sharedPlayerOptions(config),
     });
   }, [nextTrack, config]);
 

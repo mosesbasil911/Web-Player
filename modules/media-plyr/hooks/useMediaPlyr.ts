@@ -108,6 +108,18 @@ export function useMediaPlyr(config: MediaPlyrConfig) {
     plyr.loadSource(configRef.current);
   }, [sourcesSignature, config.startTime, config.preferredOrder]);
 
+  // Clip boundaries and loop do not require a manifest reload — sync them
+  // onto the live player whenever they change (including on first attach).
+  useEffect(() => {
+    const plyr = playerRef.current;
+    if (!plyr) return;
+    plyr.updateConfig({
+      startTime: config.startTime,
+      endTime: config.endTime,
+      loop: config.loop,
+    });
+  }, [config.startTime, config.endTime, config.loop]);
+
   const getInstance = useCallback((): MediaPlyrInstance | null => {
     return playerRef.current;
   }, []);
