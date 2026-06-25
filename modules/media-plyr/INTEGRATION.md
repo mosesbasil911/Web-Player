@@ -166,7 +166,8 @@ interface MediaPlyrConfig {
   muted?: boolean;
   loop?: boolean;
   volume?: number; // 0–1
-  startTime?: number; // seconds
+  startTime?: number; // seconds — seek to this position on load
+  endTime?: number; // seconds — pause (or loop back to startTime) when reached
   playbackRate?: PlaybackSpeed; // 0.25 – 2
 
   drm?: DrmConfig;
@@ -517,6 +518,37 @@ reset loop (as the reference `VideoPlayer` does).
 
 > **Note:** Loop and post-roll ads both react to content `'ended'`. Avoid
 > enabling loop when VMAP/manual post-roll ads should play after the video.
+
+### Clip boundaries (`startTime` + `endTime`)
+
+Use `startTime` and `endTime` together to define a playable clip window inside
+a longer HLS stream.
+
+```typescript
+const player = new MediaPlyr({
+  kind: 'audio',
+  sources: [{ container: 'hls', url: 'https://cdn.example.com/track.m3u8' }],
+  title: 'My Clip',
+  startTime: 14, // begin playback at 0:14
+  endTime: 29, // stop at 0:29 (15-second clip)
+});
+await player.attach(audio);
+```
+
+`endTime` is enforced inside the `timeupdate` handler. When `currentTime`
+reaches `endTime` the player either:
+
+- **pauses and rewinds** to `startTime` (default, `loop: false`)
+- **loops seamlessly** back to `startTime` (`loop: true`)
+
+**Precision:** `timeupdate` fires ~4 times per second, so the actual stop
+point may overshoot by up to ~250 ms. For pixel/frame-accurate trimming generate a server-side HLS clip instead — the player then plays it as a normal full-length stream with no
+`endTime` needed.
+
+**Seekbar:** The seekbar will reflect the full stream duration, not the clip
+length. If your UI should show only the clip window, remap the displayed
+duration and seek positions manually using `startTime` / `endTime` from your
+config.
 
 ### Ad events (`AdsManager`)
 
